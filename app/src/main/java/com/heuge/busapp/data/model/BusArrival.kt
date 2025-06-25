@@ -4,7 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.time.LocalDateTime
+import java.time.*
 import java.time.format.DateTimeFormatter
 
 @Serializable
@@ -39,18 +39,56 @@ data class BusArrival(
     @RequiresApi(Build.VERSION_CODES.O)
     fun getFormattedTime(): String {
         return try {
-            val time = LocalDateTime.parse(realTimeTime.substringBefore("+"))
-            val now = LocalDateTime.now()
-            val minutesUntil = java.time.Duration.between(now, time).toMinutes()
+            //Parse as UTC then convert to Sydney time
+            val utcTime = if (realTimeTime.contains("+") || realTimeTime.contains("Z")) {
+                Instant.parse(realTimeTime)
+            } else {
+                Instant.parse("${realTimeTime}Z")
+            }
 
-            when {
-                minutesUntil <= 0 -> "Now"
+            val sydneyTime = utcTime.atZone(ZoneId.of("Australia/Sydney"))
+            val now = ZonedDateTime.now(ZoneId.of("Australia/Sydney"))
+
+            val minutesUntil = Duration.between(now, sydneyTime).toMinutes()
+
+            when{
+                minutesUntil <=0 -> "Now"
                 minutesUntil == 1L -> "1 min"
                 minutesUntil < 60 -> "$minutesUntil mins"
-                else -> time.format(DateTimeFormatter.ofPattern("HH:mm"))
+                else -> sydneyTime.format(DateTimeFormatter.ofPattern("HH:min"))
             }
+
+
         } catch (_: Exception) {
             realTimeTime.substringBefore("+").substringAfter("T").substring(0, 5)
+
         }
     }
+
 }
+
+@Serializable
+data class BusStop(
+    val id: String,
+    val name: String? = null,
+    val lastUsed: Long = System.currentTimeMillis()
+)
+
+@Serializable
+data class StopInfoResponse(
+    @SerialName("locations") val locations: List<StopLocation>? = null
+)
+
+@Serializable
+data class StopLocation(
+    @SerialName("name")val name: String? = null,
+    @SerialName("id") val id: String? = null
+)
+
+data class GtfsStop(
+    val stopId: String,
+    val stopName: String,
+    val stopLat: Double,
+    val stopLon: Double,
+    val stopCode: String? = null
+)

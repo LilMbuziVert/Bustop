@@ -4,6 +4,7 @@ import android.content.Context
 import com.heuge.busapp.R
 import com.heuge.busapp.data.model.ApiResponse
 import com.heuge.busapp.data.model.BusArrival
+import com.heuge.busapp.data.model.StopInfoResponse
 import kotlinx.serialization.json.Json
 import okhttp3.*
 import java.io.IOException
@@ -74,6 +75,49 @@ class NSWBusService (context: Context) {
                     }
                 } catch (e: Exception) {
                     errorCallback("Parsing error: ${e.message}")
+                }
+            }
+        })
+    }
+
+    fun getStopInfo(
+        stopId: String,
+        callback: (String?) -> Unit,
+        errorCallback: (String) -> Unit
+    ) {
+        val url = "https://api.transport.nsw.gov.au/v1/tp/coord?outputFormat=rapidJSON&coord=$stopId&coordOutputFormat=EPSG%3A4326&inclFilter=1&type_1=STOP&outputCoordSys=EPSG%3A4326&version=10.2.1.42"
+
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "apikey $apiKey")
+            .addHeader("Accept", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                errorCallback("Failed to get stop info: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: ""
+
+                        try {
+                            val json = Json { ignoreUnknownKeys = true }
+                            val stopInfo = json.decodeFromString<StopInfoResponse>(responseBody)
+
+                            val stopName = stopInfo.locations?.firstOrNull()?.name
+                            callback(stopName)
+                        } catch (e: Exception) {
+                            println("Stop info parsing error: ${e.message}")
+                            callback(null)
+                        }
+                    } else {
+                        callback(null)
+                    }
+                } catch (_: Exception) {
+                    callback(null)
                 }
             }
         })
