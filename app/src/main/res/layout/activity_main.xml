@@ -1,39 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
     android:orientation="vertical"
+    android:background="@color/eink_white"
     android:padding="16dp">
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="NSW Bus Arrivals"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="24dp"
-        android:layout_gravity="center_horizontal" />
+        style="@style/EInkText.Large"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/stopIdTextInputLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Stop ID"
-        android:layout_marginBottom="16dp">
+        android:hint="@string/stop_id"
+        app:boxBackgroundMode="outline"
+        app:boxStrokeColor="@color/eink_dark_gray"
+        app:boxCornerRadiusTopStart="20dp"
+        app:boxCornerRadiusTopEnd="20dp"
+        app:boxCornerRadiusBottomStart="20dp"
+        app:boxCornerRadiusBottomEnd="20dp"
+        android:layout_marginBottom="16dp"
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/search_24px"
+        app:endIconTint="@color/eink_dark_gray">
 
-        <EditText
+        <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/stopIdEditText"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="number" />
-
+            android:layout_height="56dp"
+            style="@style/EInkText.Medium"
+            android:padding="12dp"
+            android:singleLine="true"/>
     </com.google.android.material.textfield.TextInputLayout>
-
-    <Button
-        android:id="@+id/searchButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Search Bus Arrivals"
-        android:layout_marginBottom="16dp" />
 
     <!-- Recent Stops Section -->
     <LinearLayout
@@ -42,31 +51,43 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_marginBottom="16dp"
+        android:layout_marginTop="26dp"
         android:visibility="gone">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Recent Stops"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:text="@string/recent_stops"
+            style="@style/EInkText.Large"
+            android:layout_marginBottom="10dp"
+            app:drawableStartCompat="@drawable/directions_bus_24px"
+            android:drawablePadding="8dp"
+            app:drawableTint="@color/eink_black"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recentStopsRecyclerView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:clipToPadding="false"
-            android:paddingHorizontal="4dp" />
+            android:paddingHorizontal="0dp" />
+
+        <!-- Carousel Indicator -->
+        <LinearLayout
+            android:id="@+id/indicatorContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal" />
 
     </LinearLayout>
 
     <ProgressBar
         android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center"
+        android:indeterminateDrawable="@drawable/eink_progress_bar"
         android:visibility="gone" />
 
     <TextView

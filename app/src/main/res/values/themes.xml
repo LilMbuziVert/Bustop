@@ -3,7 +3,8 @@
     <!-- Material 3 theme that's compatible with AppCompatActivity -->
     <style name="Theme.Bustop" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your Material 3 theme here -->
-        <item name="colorPrimary">@android:color/holo_blue_bright</item>
+        <item name="android:statusBarColor">@color/eink_white</item>
+        <item name="colorPrimary">@color/eink_black</item>
         <item name="colorOnPrimary">@android:color/white</item>
         <item name="colorSecondary">@android:color/holo_blue_dark</item>
     </style>

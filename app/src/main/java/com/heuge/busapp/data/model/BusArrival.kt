@@ -82,13 +82,8 @@ data class StopInfoResponse(
 @Serializable
 data class StopLocation(
     @SerialName("name")val name: String? = null,
+    @SerialName("disassembledName") val disassembledName: String? = null,
+    @SerialName("desc") val desc: String? = null,
     @SerialName("id") val id: String? = null
 )
 
-data class GtfsStop(
-    val stopId: String,
-    val stopName: String,
-    val stopLat: Double,
-    val stopLon: Double,
-    val stopCode: String? = null
-)

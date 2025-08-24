@@ -17,20 +17,28 @@ class BusArrivalAdapter(private var arrivals: List<BusArrival>) :
         val routeNumber: TextView = view.findViewById(R.id.routeNumber)
         val destination: TextView = view.findViewById(R.id.destination)
         val arrivalTime: TextView = view.findViewById(R.id.arrivalTime)
+        val separatorLine: View = view.findViewById(R.id.separatorLine)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_bus_arrival, parent, false)
+            .inflate(R.layout.item_bus_arrival_eink, parent, false)  // Use eink-optimized layout
         return ViewHolder(view)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val arrival = arrivals[position]
+
+        // Use high contrast text fields (you can customize text appearance in XML)
         holder.routeNumber.text = arrival.routeName
         holder.destination.text = "To ${arrival.destination}"
+
+        // Use formatted time from data class
         holder.arrivalTime.text = arrival.getFormattedTime()
+
+        // Visual separator between items, hide on last item
+        holder.separatorLine.visibility = if (position == arrivals.size - 1) View.GONE else View.VISIBLE
     }
 
     override fun getItemCount() = arrivals.size

@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Bustop</string>
+    <string name="stop_id">Stop ID</string>
+    <string name="next_arrival">Next arrival</string>
+    <string name="recent_stops">Recent Stops</string>
+    <string name="stop_name">Stop Name</string>
 </resources>

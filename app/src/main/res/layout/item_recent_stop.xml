@@ -1,37 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="120dp"
-    android:layout_height="wrap_content"
-    android:layout_margin="4dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="2dp">
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="150dp"
+    android:layout_height="160dp"
+    android:layout_marginEnd="0dp"
+    android:orientation="horizontal"
+    android:background="@drawable/eink_card_background"
+    android:layout_marginTop="12dp"
+    android:padding="6dp">
 
+
+    <!-- Main content container -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:paddingHorizontal="10dp">
 
         <TextView
             android:id="@+id/stopIdText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Stop ID"
-            android:textSize="14sp"
-            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:text="@string/stop_id"
+            style="@style/EInkText.Large"
             android:gravity="center" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="8dp"
+            android:background="@color/eink_white" />
 
         <TextView
             android:id="@+id/stopNameText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Stop Name"
-            android:textSize="12sp"
+            android:text="@string/stop_name"
+            style="@style/EInkText.Medium"
             android:gravity="center"
-            android:maxLines="2"
+            android:maxLines="3"
             android:ellipsize="end" />
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+    <!-- Right vertical line -->
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:background="@color/eink_black" />
+
+</LinearLayout>

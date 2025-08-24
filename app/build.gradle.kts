@@ -79,6 +79,7 @@ dependencies {
 
 
     implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.core.animation)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

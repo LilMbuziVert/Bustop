@@ -85,7 +85,8 @@ class NSWBusService (context: Context) {
         callback: (String?) -> Unit,
         errorCallback: (String) -> Unit
     ) {
-        val url = "https://api.transport.nsw.gov.au/v1/tp/coord?outputFormat=rapidJSON&coord=$stopId&coordOutputFormat=EPSG%3A4326&inclFilter=1&type_1=STOP&outputCoordSys=EPSG%3A4326&version=10.2.1.42"
+        // Stop finder endpoint
+        val url = "https://api.transport.nsw.gov.au/v1/tp/stop_finder?outputFormat=rapidJSON&type_sf=stop&name_sf=$stopId&coordOutputFormat=EPSG%3A4326"
 
         val request = Request.Builder()
             .url(url)
@@ -95,28 +96,38 @@ class NSWBusService (context: Context) {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                errorCallback("Failed to get stop info: ${e.message}")
+                println("Stop info API failed: ${e.message}")
+                callback(null)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 try {
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string() ?: ""
+                        println("Stop info response: $responseBody") // Debug log
 
                         try {
                             val json = Json { ignoreUnknownKeys = true }
                             val stopInfo = json.decodeFromString<StopInfoResponse>(responseBody)
 
-                            val stopName = stopInfo.locations?.firstOrNull()?.name
+                            // Try different possible fields for the stop name
+                            val stopName = stopInfo.locations?.firstOrNull()?.let { location ->
+                                location.name ?: location.disassembledName ?: location.desc
+                            }
+
+                            println("Extracted stop name: $stopName") // Debug log
                             callback(stopName)
                         } catch (e: Exception) {
                             println("Stop info parsing error: ${e.message}")
+                            println("Response was: $responseBody")
                             callback(null)
                         }
                     } else {
+                        println("Stop info API returned: ${response.code}")
                         callback(null)
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    println("Stop info error: ${e.message}")
                     callback(null)
                 }
             }
