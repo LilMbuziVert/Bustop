@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/eink_card_background"
+    android:layout_marginVertical="8dp"
+    android:layout_marginHorizontal="2dp"
+    android:weightSum="3">
+
+    <!-- First stop -->
+    <LinearLayout
+        android:id="@+id/firstStopContainer"
+        android:layout_width="0dp"
+        android:layout_height="160dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="18dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/firstStopIdText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/EInkText.Large"
+            android:gravity="center"
+            android:textColor="@color/eink_black"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/firstStopNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/EInkText.Small"
+            android:gravity="center"
+            android:textColor="@color/eink_dark_gray"
+            android:maxLines="4"
+            android:ellipsize="end" />
+
+    </LinearLayout>
+
+    <!-- Vertical separator -->
+    <View
+        android:id="@+id/firstSeparator"
+        android:layout_width="0.5dp"
+        android:layout_height="match_parent"
+        android:background="@color/eink_black"
+        android:layout_marginVertical="12dp" />
+
+    <!-- Second stop -->
+    <LinearLayout
+        android:id="@+id/secondStopContainer"
+        android:layout_width="0dp"
+        android:layout_height="160dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="18dp"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/secondStopIdText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/EInkText.Large"
+            android:gravity="center"
+            android:textColor="@color/eink_black"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/secondStopNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/EInkText.Small"
+            android:gravity="center"
+            android:textColor="@color/eink_dark_gray"
+            android:maxLines="4"
+            android:ellipsize="end" />
+
+    </LinearLayout>
+
+    <!-- Vertical separator -->
+    <View
+        android:id="@+id/secondSeparator"
+        android:layout_width="0.5dp"
+        android:layout_height="match_parent"
+        android:background="@color/eink_black"
+        android:layout_marginVertical="12dp"
+        android:visibility="gone"/>
+
+    <!-- Third stop -->
+    <LinearLayout
+        android:id="@+id/thirdStopContainer"
+        android:layout_width="0dp"
+        android:layout_height="160dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="18dp"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/thirdStopIdText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/EInkText.Large"
+            android:gravity="center"
+            android:textColor="@color/eink_black"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/thirdStopNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/EInkText.Small"
+            android:gravity="center"
+            android:textColor="@color/eink_dark_gray"
+            android:maxLines="4"
+            android:ellipsize="end" />
+
+    </LinearLayout>
+
+</LinearLayout>

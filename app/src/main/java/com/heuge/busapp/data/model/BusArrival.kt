@@ -87,3 +87,9 @@ data class StopLocation(
     @SerialName("id") val id: String? = null
 )
 
+data class BusStopGroup(
+    val stops: List<BusStop>
+) {
+    val hasSecondStop: Boolean get() = stops.size >= 2
+    val hasThirdStop: Boolean get() = stops.size >= 3
+}

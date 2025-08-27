@@ -26,7 +26,7 @@
 
     <style name="EInkText">
         <item name="android:textColor">@color/eink_black</item>
-        <item name="android:fontFamily">monospace</item>
+        <item name="android:fontFamily">@font/spacemono_regular</item>
         <item name="android:letterSpacing">0.02</item>
         <item name="android:lineSpacingExtra">2dp</item>
     </style>
@@ -43,5 +43,14 @@
     <style name="EInkText.Small">
         <item name="android:textSize">12sp</item>
         <item name="android:textColor">@color/eink_dark_gray</item>
+    </style>
+
+    <style name="EInkText.BigNumber">
+        <item name="android:textSize">40sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="EInkText.NormalNumber">
+        <item name="android:textSize">20sp</item>
     </style>
 </resources>

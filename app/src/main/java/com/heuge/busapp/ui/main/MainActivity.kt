@@ -17,6 +17,9 @@ import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -58,9 +61,23 @@ class MainActivity : AppCompatActivity() {
         applyEInkOptimizations()
         setupTouchOutsideToClearFocus()
 
+        // Ensure there is enough spacing between title and status bar
+        val rootLayout = findViewById<View>(R.id.root_layout)
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, insets ->
+            val systemBarsInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val horizontalPadding = dpToPx(16)
+            view.updatePadding(
+                left = horizontalPadding,
+                top = systemBarsInsets.top + dpToPx(24), // extra top margin
+                right = horizontalPadding
+            )
+            insets
+        }
+
         initializeViews()
         setupRecyclerView()
         setupClickListeners()
+
 
         busService = NSWBusService(this)
 
@@ -68,6 +85,9 @@ class MainActivity : AppCompatActivity() {
         setupRecentStopsRecyclerView()
         loadRecentStops()
     }
+
+    //fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
+
 
     private fun setupTouchOutsideToClearFocus() {
         val rootLayout = findViewById<View>(R.id.root_layout)
@@ -213,7 +233,6 @@ class MainActivity : AppCompatActivity() {
                 super.onScrollStateChanged(recyclerView, newState)
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                     val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                    //val position = layoutManager.findFirstCompletelyVisibleItemPosition()
                     val snapView = snapHelper.findSnapView(layoutManager)
                     val snapPosition = snapView?.let { layoutManager.getPosition(it) } ?: 0
                     if (snapPosition >= 0 && snapPosition < indicators.size) {
@@ -278,7 +297,9 @@ class MainActivity : AppCompatActivity() {
         recentStopsAdapter.updateStops(recentStops)
 
         // Set up carousel indicator with the actual count
-        setupCarouselIndicator(recentStops.size)
+        // Calculate groups for indicator
+        val groupCount = (recentStops.size + 2) / 3  // Ceiling division
+        setupCarouselIndicator(groupCount)
 
         // Animate visibility changes using e-ink fade functions
         if (recentStops.isEmpty()) {
@@ -402,9 +423,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun showResults(arrivals: List<BusArrival>) {
         adapter.updateArrivals(arrivals)
-//        busArrivalRecyclerView.visibility = View.VISIBLE
-//        errorTextView.visibility = View.GONE
-//        noDataTextView.visibility = View.GONE
         eInkFadeIn(busArrivalRecyclerView)
         eInkFadeOut(errorTextView)
         eInkFadeOut(noDataTextView)
@@ -412,18 +430,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showError(message: String) {
         errorTextView.text = message
-        //errorTextView.visibility = View.VISIBLE
         eInkFadeIn(errorTextView)
-        //busArrivalRecyclerView.visibility = View.GONE
         eInkFadeOut(busArrivalRecyclerView)
-        //noDataTextView.visibility = View.GONE
         eInkFadeOut(noDataTextView)
     }
 
     private fun showNoData() {
-//        noDataTextView.visibility = View.VISIBLE
-//        busArrivalRecyclerView.visibility = View.GONE
-//        errorTextView.visibility = View.GONE
         eInkFadeIn(noDataTextView)
         eInkFadeOut(busArrivalRecyclerView)
         eInkFadeOut(errorTextView)
