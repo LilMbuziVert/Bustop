@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <!-- Base E-Ink App Theme -->
     <style name="EInkTheme" parent="Theme.Material3.Light.NoActionBar">
-        <item name="android:windowBackground">@color/eink_white</item>
-        <item name="android:colorBackground">@color/eink_white</item>
-        <item name="android:textColorPrimary">@color/eink_black</item>
-        <item name="android:textColorSecondary">@color/eink_dark_gray</item>
-        <item name="colorPrimary">@color/eink_black</item>
-        <item name="colorSecondary">@color/eink_dark_gray</item>
-        <item name="colorSurface">@color/eink_light_gray</item>
+
+        <item name="android:windowBackground">?attr/appBackground</item>
+        <item name="android:textColorPrimary">?attr/appOnBackground</item>
+        <item name="android:textColorSecondary">?attr/appOnSurface</item>
+        <item name="colorPrimary">?attr/appOnBackground</item>
+        <item name="colorSecondary">?attr/appOnSurface</item>
+        <item name="colorSurface">?attr/appBackground</item>
     </style>
 
+    <!-- Card style -->
     <style name="EInkCard">
         <item name="android:background">@drawable/eink_card_background</item>
         <item name="android:elevation">0dp</item>
     </style>
 
+    <!-- Button style -->
     <style name="EInkButton" parent="Widget.Material3.Button.OutlinedButton">
-        <item name="android:textColor">@color/eink_black</item>
+        <item name="android:textColor">?attr/appOnBackground</item>
         <item name="android:background">@drawable/eink_button_background</item>
         <item name="backgroundTint">@null</item>
         <item name="android:textSize">16sp</item>
@@ -24,8 +28,9 @@
         <item name="android:letterSpacing">0.05</item>
     </style>
 
+    <!-- Text styles -->
     <style name="EInkText">
-        <item name="android:textColor">@color/eink_black</item>
+        <item name="android:textColor">?attr/appOnBackground</item>
         <item name="android:fontFamily">@font/spacemono_regular</item>
         <item name="android:letterSpacing">0.02</item>
         <item name="android:lineSpacingExtra">2dp</item>
@@ -42,7 +47,6 @@
 
     <style name="EInkText.Small">
         <item name="android:textSize">12sp</item>
-        <item name="android:textColor">@color/eink_dark_gray</item>
     </style>
 
     <style name="EInkText.BigNumber">
@@ -53,4 +57,5 @@
     <style name="EInkText.NormalNumber">
         <item name="android:textSize">20sp</item>
     </style>
+
 </resources>

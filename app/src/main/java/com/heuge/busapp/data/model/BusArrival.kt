@@ -34,8 +34,15 @@ data class BusArrival(
     val routeName: String,
     val destination: String,
     val scheduledTime: String,
-    val realTimeTime: String
+    val realTimeTime: String,
+    val delayMinutes: Long
 ) {
+    val delayStatus: String
+        get() = when{
+            delayMinutes > 0 -> "Late $delayMinutes min"
+            delayMinutes < 0 -> "Early ${-delayMinutes} min"
+            else -> "On time"
+        }
     @RequiresApi(Build.VERSION_CODES.O)
     fun getFormattedTime(): String {
         return try {

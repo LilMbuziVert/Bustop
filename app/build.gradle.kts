@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.cardview)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.swiperefreshlayout)
 
     // Networking and JSON
     implementation(libs.okhttp)

@@ -4,7 +4,7 @@
     android:layout_height="160dp"
     android:layout_marginEnd="0dp"
     android:orientation="horizontal"
-    android:background="@drawable/eink_card_background"
+    android:background="?attr/appBackground"
     android:layout_marginTop="12dp"
     android:padding="6dp">
 
@@ -31,7 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginVertical="8dp"
-            android:background="@color/eink_white" />
+            android:background="?attr/appOnBackground" />
 
         <TextView
             android:id="@+id/stopNameText"
@@ -49,6 +49,6 @@
     <View
         android:layout_width="1dp"
         android:layout_height="match_parent"
-        android:background="@color/eink_black" />
+        android:background="?attr/appOnBackground" />
 
 </LinearLayout>

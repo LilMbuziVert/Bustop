@@ -24,12 +24,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.PagerSnapHelper
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.textfield.TextInputLayout
 import com.heuge.busapp.R
 import com.heuge.busapp.data.api.NSWBusService
 import com.heuge.busapp.data.local.RecentStopsManager
 import com.heuge.busapp.data.model.BusArrival
 import com.heuge.busapp.ui.adapter.BusArrivalAdapter
+import com.heuge.busapp.ui.adapter.BusNumberAdapter
 import com.heuge.busapp.ui.adapter.RecentStopsAdapter
 import kotlinx.coroutines.launch
 
@@ -45,12 +47,22 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var busService: NSWBusService
     private lateinit var adapter: BusArrivalAdapter
+    private lateinit var busNumberAdapter: BusNumberAdapter
 
     private lateinit var recentStopsManager: RecentStopsManager
     private lateinit var recentStopsAdapter: RecentStopsAdapter
 
     private lateinit var indicatorContainer: LinearLayout
     private val indicators = mutableListOf<View>()
+
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+
+    private var currentStopId: String? = null
+    // Stores all buses available at the current stop
+    private var availableBusNumbers: List<String> = emptyList()
+
+    // Stores all arrivals so we can filter without losing data
+    private var allArrivals: List<BusArrival> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,6 +95,8 @@ class MainActivity : AppCompatActivity() {
 
         recentStopsManager = RecentStopsManager(this)
         setupRecentStopsRecyclerView()
+        setupBusNumberRecyclerView()
+        setupSwipeRefresh()
         loadRecentStops()
     }
 
@@ -168,6 +182,21 @@ class MainActivity : AppCompatActivity() {
         snapHelper.attachToRecyclerView(recentStopsRecyclerView)
     }
 
+    private fun setupBusNumberRecyclerView() {
+        val recycler = findViewById<RecyclerView>(R.id.busNumberRecyclerView)
+        recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+
+        busNumberAdapter = BusNumberAdapter(emptyList()) { selectedBus ->
+            filterByBusNumber(selectedBus)
+        }
+        recycler.adapter = busNumberAdapter
+    }
+
+    // call this after arrivals are loaded
+    private fun updateBusNumbers() {
+        busNumberAdapter.updateData(availableBusNumbers)
+    }
+
 
     private fun animateProgressBar() {
         val animator = ObjectAnimator.ofInt(progressBar, "progress", 0, 100)
@@ -178,33 +207,13 @@ class MainActivity : AppCompatActivity() {
         animator.start()
     }
 
-    // Custom touch feedback for e-ink
-    private fun setupEInkTouchFeedback(view: View) {
-        view.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    // Instant visual feedback
-                    v.alpha = 0.7f
-                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                }
-                MotionEvent.ACTION_UP -> {
-                    v.alpha = 1.0f
-                    v.performClick() // Notify that the view was clicked
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    v.alpha = 1.0f
-                }
-            }
-            true // Indicate we handled the touch
-        }
-    }
-
 
     private fun initializeViews() {
         stopIdEditText = findViewById(R.id.stopIdEditText)
         stopIdTextInputLayout = findViewById(R.id.stopIdTextInputLayout)
         progressBar = findViewById(R.id.progressBar)
         busArrivalRecyclerView = findViewById(R.id.recyclerView)
+        swipeRefreshLayout = findViewById(R.id.swipeRefresh)
         recentStopsRecyclerView = findViewById(R.id.recentStopsRecyclerView)
         errorTextView = findViewById(R.id.errorTextView)
         noDataTextView = findViewById(R.id.noDataTextView)
@@ -247,6 +256,17 @@ class MainActivity : AppCompatActivity() {
 
         //e-ink stuff
         setupEInkRecyclerView()
+    }
+
+    private fun setupSwipeRefresh() {
+        swipeRefreshLayout.setOnRefreshListener {
+            refreshCurrentStopData()
+        }
+
+        swipeRefreshLayout.setColorSchemeResources(
+            android.R.color.black,
+            android.R.color.darker_gray
+        )
     }
 
     private fun setupCarouselIndicator(itemCount: Int) {
@@ -310,6 +330,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadBusArrivals(stopId: String) {
+        currentStopId = stopId
         // Fill the search field when clicking a recent stop
         stopIdEditText.setText(stopId)
 
@@ -354,6 +375,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun searchBusArrivals(stopId: String) {
+        currentStopId = stopId
         showLoading()
 
         // First, try to get the stop name
@@ -406,6 +428,46 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    private fun refreshCurrentStopData() {
+        currentStopId?.let { stopId ->
+            // Don't show the main progress bar during refresh
+            refreshBusArrivals(stopId)
+        } ?: run {
+            // No current stop to refresh
+            swipeRefreshLayout.isRefreshing = false
+        }
+    }
+
+    private fun refreshBusArrivals(stopId: String) {
+
+        lifecycleScope.launch {
+            busService.getBusArrivals(
+                stopId = stopId,
+                callback = { arrivals ->
+                    runOnUiThread {
+                        swipeRefreshLayout.isRefreshing = false
+                        if (arrivals.isNotEmpty()) {
+                            eInkFadeOut(busArrivalRecyclerView)
+                            busArrivalRecyclerView.postDelayed({
+                                showResults(arrivals)
+                            }, 200)
+                            //showResults(arrivals)
+                        } else {
+                            showNoData()
+                        }
+                    }
+                },
+                errorCallback = { error ->
+                    runOnUiThread {
+                        swipeRefreshLayout.isRefreshing = false
+                        showError(error)
+                    }
+                }
+            )
+        }
+    }
+
     private fun showLoading() {
         eInkFadeIn(progressBar)
         progressBar.isIndeterminate = false
@@ -422,10 +484,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showResults(arrivals: List<BusArrival>) {
+        allArrivals = arrivals
         adapter.updateArrivals(arrivals)
+
+        availableBusNumbers = listOf("All") + arrivals.map { it.routeName }.distinct()
+        updateBusNumbers()
+
         eInkFadeIn(busArrivalRecyclerView)
         eInkFadeOut(errorTextView)
         eInkFadeOut(noDataTextView)
+
     }
 
     private fun showError(message: String) {
@@ -440,4 +508,18 @@ class MainActivity : AppCompatActivity() {
         eInkFadeOut(busArrivalRecyclerView)
         eInkFadeOut(errorTextView)
     }
+
+    private fun filterByBusNumber(busNumber: String) {
+        if (busNumber == "All") {
+            adapter.updateArrivals(allArrivals) // show everything
+        } else {
+            val filteredArrivals = allArrivals.filter { it.routeName == busNumber }
+            if (filteredArrivals.isNotEmpty()) {
+                adapter.updateArrivals(filteredArrivals)
+            } else {
+                showNoData()
+            }
+        }
+    }
+
 }

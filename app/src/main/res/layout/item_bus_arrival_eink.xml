@@ -3,29 +3,35 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/eink_white"
-    android:padding="12dp">
+    android:background="?attr/appBackground"
+    android:paddingTop="8dp"
+    android:paddingStart="4dp"
+    android:paddingEnd="6dp">
 
+
+    <!-- Route number big on top -->
+    <TextView
+        android:id="@+id/routeNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="start"
+        android:layout_gravity="start"
+        android:text="69"
+        style="@style/EInkText.BigNumber"
+        android:paddingBottom="8dp"/>
+
+    <!-- Row: left = destination, right = time -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:baselineAligned="false"
-        android:paddingVertical="12dp">
+        android:baselineAligned="false">
 
-        <TextView
-            android:id="@+id/routeNumber"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:gravity="center"
-            style="@style/EInkText.BigNumber"/>
-
+        <!-- Left side -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="16dp"
             android:orientation="vertical">
 
             <TextView
@@ -33,6 +39,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="@style/EInkText.Medium"
+                android:text="To Example Destination"
                 android:textSize="16sp"/>
 
             <TextView
@@ -40,24 +47,39 @@
                 android:layout_height="wrap_content"
                 android:text="Next arrival"
                 style="@style/EInkText.Small" />
-
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/arrivalTime"
+        <!-- Right side -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            style="@style/EInkText.NormalNumber" />
+            android:orientation="vertical"
+            android:gravity="end">
 
+            <TextView
+                android:id="@+id/arrivalTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.NormalNumber"
+                android:text="21:45"
+                android:gravity="end"/>
+
+            <TextView
+                android:id="@+id/delayStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.Small"
+                android:text="On time"
+                android:layout_marginTop="4dp"
+                android:gravity="end"/>
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- Separator line for visual separation -->
+    <!-- Separator line -->
     <View
         android:id="@+id/separatorLine"
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
         android:layout_marginTop="16dp"
-        android:background="@color/eink_black" />
-
+        android:background="?attr/appOnBackground" />
 </LinearLayout>

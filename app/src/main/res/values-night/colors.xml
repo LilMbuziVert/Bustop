@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Night/Dark Mode E-ink Palette -->
+    <color name="eink_white">#F8F8F8</color> <!-- Still white, for text on dark background -->
+    <color name="eink_light_gray">#E0E0E0</color>
+    <color name="eink_medium_gray">#A0A0A0</color>
+    <color name="eink_dark_gray">#606060</color>
+    <color name="eink_very_dark_gray">#404040</color>
+    <color name="eink_black">#212129</color> <!-- Still black, for dark background -->
+
+    <!-- Accent colors adjusted for dark mode visibility -->
+    <color name="eink_accent_blue">#A0AEC0</color>
+    <color name="eink_accent_red">#FC8181</color>
+</resources>

@@ -17,6 +17,7 @@ class BusArrivalAdapter(private var arrivals: List<BusArrival>) :
         val routeNumber: TextView = view.findViewById(R.id.routeNumber)
         val destination: TextView = view.findViewById(R.id.destination)
         val arrivalTime: TextView = view.findViewById(R.id.arrivalTime)
+        val delayStatus: TextView = view.findViewById(R.id.delayStatus)
         val separatorLine: View = view.findViewById(R.id.separatorLine)
     }
 
@@ -32,10 +33,34 @@ class BusArrivalAdapter(private var arrivals: List<BusArrival>) :
 
         // Use high contrast text fields (you can customize text appearance in XML)
         holder.routeNumber.text = arrival.routeName
-        holder.destination.text = "To ${arrival.destination}"
+        holder.destination.text = buildString {
+            append("To ")
+            append(arrival.destination)
+        }
 
         // Use formatted time from data class
         holder.arrivalTime.text = arrival.getFormattedTime()
+
+        holder.delayStatus.text = arrival.delayStatus
+
+        when {
+            arrival.delayMinutes > 0 -> holder.delayStatus.setTextColor(
+                holder.itemView.context.getColor(android.R.color.holo_red_dark)
+            )
+            arrival.delayMinutes < 0 -> holder.delayStatus.setTextColor(
+                holder.itemView.context.getColor(android.R.color.holo_green_dark)
+            )
+            else -> {
+                // Get theme attribute color for "on time" text
+                val typedValue = android.util.TypedValue()
+                holder.itemView.context.theme.resolveAttribute(
+                    R.attr.appOnBackground,
+                    typedValue,
+                    true
+                )
+                holder.delayStatus.setTextColor(typedValue.data)
+            }
+        }
 
         // Visual separator between items, hide on last item
         holder.separatorLine.visibility = if (position == arrivals.size - 1) View.GONE else View.VISIBLE

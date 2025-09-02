@@ -8,13 +8,14 @@
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:orientation="vertical"
-    android:background="@color/eink_white"
+    android:background="?attr/appBackground"
     android:fitsSystemWindows="true"
     android:padding="16dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textColor="?attr/appOnBackground"
         android:text="@string/nsw_bus_arrivals"
         style="@style/EInkText.Large"
         android:gravity="center"
@@ -25,9 +26,13 @@
         android:id="@+id/stopIdTextInputLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
         android:hint="@string/stop_id"
         app:boxBackgroundMode="outline"
-        app:boxStrokeColor="@color/eink_dark_gray"
+        app:boxStrokeColor="@color/box_stroke_color"
+        app:boxBackgroundColor="?attr/appBackground"
+        app:hintTextColor="?attr/appOnSurface"
         app:boxCornerRadiusTopStart="20dp"
         app:boxCornerRadiusTopEnd="20dp"
         app:boxCornerRadiusBottomStart="20dp"
@@ -35,15 +40,16 @@
         android:layout_marginBottom="16dp"
         app:endIconMode="custom"
         app:endIconDrawable="@drawable/search_24px"
-        app:endIconTint="@color/eink_dark_gray">
+        app:endIconTint="?attr/appOnSurface">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/stopIdEditText"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             style="@style/EInkText.Medium"
+            android:textColor="?attr/appOnBackground"
             android:padding="12dp"
-            android:singleLine="true"/>
+            android:singleLine="true" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Recent Stops Section -->
@@ -64,7 +70,8 @@
             android:layout_marginBottom="10dp"
             app:drawableStartCompat="@drawable/directions_bus_24px"
             android:drawablePadding="8dp"
-            app:drawableTint="@color/eink_black"/>
+            app:drawableTint="?attr/colorOnBackground"
+            android:paddingStart="12dp"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recentStopsRecyclerView"
@@ -80,7 +87,9 @@
             android:layout_height="wrap_content"
             android:layout_gravity="start"
             android:layout_marginTop="12dp"
-            android:orientation="horizontal" />
+            android:layout_marginBottom="12dp"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"/>
 
     </LinearLayout>
 
@@ -96,7 +105,7 @@
         android:id="@+id/errorTextView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/holo_red_dark"
+        android:textColor="?attr/appErrorColor"
         android:textAlignment="center"
         android:visibility="gone"
         android:layout_marginBottom="16dp" />
@@ -110,11 +119,35 @@
         android:visibility="gone"
         android:layout_marginBottom="16dp" />
 
+    <!-- Horizontal list of bus numbers -->
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
+        android:id="@+id/busNumberRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:visibility="gone" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"/>
+
+
+    <!--Bus arrivals list-->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="12dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:visibility="gone"
+            android:scrollbars="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="16dp"
+            android:scrollbarThumbVertical="@drawable/custom_scrollbar"
+            android:scrollbarStyle="outsideInset" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </LinearLayout>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Dark mode app theme -->
+    <style name="Theme.Bustop" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Dark background with light text -->
+        <item name="appBackground">@color/eink_black</item>
+        <item name="appOnBackground">@color/eink_white</item>
+        <item name="appOnSurface">@color/eink_medium_gray</item>
+        <item name="appErrorColor">@color/eink_accent_red</item>
+        <item name="appScrollbarColor">@color/eink_medium_gray</item>
+
+        <!-- Status bar configuration -->
+        <item name="android:statusBarColor">@color/eink_black</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

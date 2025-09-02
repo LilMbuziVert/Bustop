@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <attr name="appBackground" format="color" />
+    <attr name="appOnBackground" format="color" />
+    <attr name="appOnSurface" format="color" />
+    <attr name="appErrorColor" format="color" />
+    <attr name="appScrollbarColor" format="color" />
+</resources>

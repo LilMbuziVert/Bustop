@@ -24,7 +24,6 @@
             android:layout_height="wrap_content"
             style="@style/EInkText.Large"
             android:gravity="center"
-            android:textColor="@color/eink_black"
             android:layout_marginBottom="8dp" />
 
         <TextView
@@ -33,7 +32,7 @@
             android:layout_height="wrap_content"
             style="@style/EInkText.Small"
             android:gravity="center"
-            android:textColor="@color/eink_dark_gray"
+            android:minHeight="64dp"
             android:maxLines="4"
             android:ellipsize="end" />
 
@@ -44,7 +43,7 @@
         android:id="@+id/firstSeparator"
         android:layout_width="0.5dp"
         android:layout_height="match_parent"
-        android:background="@color/eink_black"
+        android:background="?attr/appOnBackground"
         android:layout_marginVertical="12dp" />
 
     <!-- Second stop -->
@@ -64,7 +63,6 @@
             android:layout_height="wrap_content"
             style="@style/EInkText.Large"
             android:gravity="center"
-            android:textColor="@color/eink_black"
             android:layout_marginBottom="8dp" />
 
         <TextView
@@ -73,7 +71,7 @@
             android:layout_height="wrap_content"
             style="@style/EInkText.Small"
             android:gravity="center"
-            android:textColor="@color/eink_dark_gray"
+            android:minHeight="64dp"
             android:maxLines="4"
             android:ellipsize="end" />
 
@@ -84,7 +82,7 @@
         android:id="@+id/secondSeparator"
         android:layout_width="0.5dp"
         android:layout_height="match_parent"
-        android:background="@color/eink_black"
+        android:background="?attr/appOnBackground"
         android:layout_marginVertical="12dp"
         android:visibility="gone"/>
 
@@ -105,7 +103,6 @@
             android:layout_height="wrap_content"
             style="@style/EInkText.Large"
             android:gravity="center"
-            android:textColor="@color/eink_black"
             android:layout_marginBottom="8dp" />
 
         <TextView
@@ -114,7 +111,7 @@
             android:layout_height="wrap_content"
             style="@style/EInkText.Small"
             android:gravity="center"
-            android:textColor="@color/eink_dark_gray"
+            android:minHeight="64dp"
             android:maxLines="4"
             android:ellipsize="end" />
 

@@ -1,6 +1,8 @@
 package com.heuge.busapp.data.api
 
 import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.heuge.busapp.R
 import com.heuge.busapp.data.model.ApiResponse
 import com.heuge.busapp.data.model.BusArrival
@@ -8,6 +10,9 @@ import com.heuge.busapp.data.model.StopInfoResponse
 import kotlinx.serialization.json.Json
 import okhttp3.*
 import java.io.IOException
+import java.time.Duration
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 class NSWBusService (context: Context) {
@@ -42,10 +47,13 @@ class NSWBusService (context: Context) {
                 errorCallback("Network error: ${e.message}")
             }
 
+            @RequiresApi(Build.VERSION_CODES.O)
             override fun onResponse(call: Call, response: Response) {
                 try {
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string() ?: ""
+                        println("wow")
+                        println("swag:$responseBody") //debug
 
                         try {
                             val apiResponse = json.decodeFromString<ApiResponse>(responseBody)
@@ -56,11 +64,19 @@ class NSWBusService (context: Context) {
                                     val scheduledTime = event.departureTimePlanned ?: return@mapNotNull null
                                     val realTimeTime = event.departureTimeEstimated ?: scheduledTime
 
+                                    val planned = OffsetDateTime.parse(scheduledTime,
+                                        DateTimeFormatter.ISO_DATE_TIME)
+                                    val estimated = OffsetDateTime.parse(realTimeTime,
+                                        DateTimeFormatter.ISO_DATE_TIME)
+
+                                    val delayMinutes = Duration.between(planned, estimated).toMinutes()
+
                                     BusArrival(
                                         routeName = routeName,
                                         destination = destination,
                                         scheduledTime = scheduledTime,
-                                        realTimeTime = realTimeTime
+                                        realTimeTime = realTimeTime,
+                                        delayMinutes = delayMinutes
                                     )
                                 }
                                 ?.take(5) ?: emptyList()
@@ -104,7 +120,6 @@ class NSWBusService (context: Context) {
                 try {
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string() ?: ""
-                        println("Stop info response: $responseBody") // Debug log
 
                         try {
                             val json = Json { ignoreUnknownKeys = true }
@@ -114,8 +129,6 @@ class NSWBusService (context: Context) {
                             val stopName = stopInfo.locations?.firstOrNull()?.let { location ->
                                 location.name ?: location.disassembledName ?: location.desc
                             }
-
-                            println("Extracted stop name: $stopName") // Debug log
                             callback(stopName)
                         } catch (e: Exception) {
                             println("Stop info parsing error: ${e.message}")
