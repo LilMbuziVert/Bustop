@@ -24,54 +24,54 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:baselineAligned="false">
 
-        <!-- Left side -->
+        <!-- First row: Destination and Time -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:baselineAligned="true">
 
             <TextView
                 android:id="@+id/destination"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 style="@style/EInkText.Medium"
-                android:text="To Example Destination"
+                android:text="@string/to_example_destination"
                 android:textSize="16sp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Next arrival"
-                style="@style/EInkText.Small" />
-        </LinearLayout>
-
-        <!-- Right side -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="end">
 
             <TextView
                 android:id="@+id/arrivalTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="@style/EInkText.NormalNumber"
-                android:text="21:45"
-                android:gravity="end"/>
+                android:text="21:45"/>
+        </LinearLayout>
+
+        <!-- Second row: Next arrival and Status -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp"
+            android:baselineAligned="true">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/next_arrival"
+                style="@style/EInkText.Small" />
 
             <TextView
                 android:id="@+id/delayStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="@style/EInkText.Small"
-                android:text="On time"
-                android:layout_marginTop="4dp"
-                android:gravity="end"/>
+                android:text="On time"/>
         </LinearLayout>
     </LinearLayout>
 
@@ -79,7 +79,7 @@
     <View
         android:id="@+id/separatorLine"
         android:layout_width="match_parent"
-        android:layout_height="0.5dp"
+        android:layout_height="0.10dp"
         android:layout_marginTop="16dp"
         android:background="?attr/appOnBackground" />
 </LinearLayout>

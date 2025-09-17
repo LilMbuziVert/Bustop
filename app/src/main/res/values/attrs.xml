@@ -5,4 +5,6 @@
     <attr name="appOnSurface" format="color" />
     <attr name="appErrorColor" format="color" />
     <attr name="appScrollbarColor" format="color" />
+    <attr name="delayLateColor" format="color" />
+    <attr name="delayEarlyColor" format="color" />
 </resources>

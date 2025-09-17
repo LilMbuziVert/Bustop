@@ -7,6 +7,8 @@
         <item name="appOnSurface">@color/eink_dark_gray</item>
         <item name="appErrorColor">@color/eink_accent_red</item>
         <item name="appScrollbarColor">@color/eink_dark_gray</item>
+        <item name="delayLateColor">@android:color/holo_red_dark</item>
+        <item name="delayEarlyColor">@android:color/holo_green_dark</item>
 
         <!-- Status bar configuration -->
         <item name="android:statusBarColor">@color/eink_white</item>

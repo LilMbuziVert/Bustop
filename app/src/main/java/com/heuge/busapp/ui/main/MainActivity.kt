@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.view.animation.LinearInterpolator
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.content.res.Configuration
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -100,7 +101,6 @@ class MainActivity : AppCompatActivity() {
         loadRecentStops()
     }
 
-    //fun Int.dpToPx(): Int = (this * resources.displayMetrics.density).toInt()
 
 
     private fun setupTouchOutsideToClearFocus() {
@@ -129,17 +129,35 @@ class MainActivity : AppCompatActivity() {
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
         )
 
-        // Set light status bar
+        // Read android:windowLightStatusBar from the current theme
+        val typedArray = theme.obtainStyledAttributes(intArrayOf(android.R.attr.windowLightStatusBar))
+        val lightStatusBar = typedArray.getBoolean(0, false)
+        typedArray.recycle()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.insetsController?.setSystemBarsAppearance(
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            )
+            val controller = window.insetsController
+            if (lightStatusBar) {
+                controller?.setSystemBarsAppearance(
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                )
+            } else {
+                controller?.setSystemBarsAppearance(
+                    0,
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                )
+            }
         } else {
             @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            window.decorView.systemUiVisibility = if (lightStatusBar) {
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            } else {
+                0
+            }
         }
     }
+
+
 
     // Custom animation replacements for e-ink
     private fun eInkFadeIn(view: View) {

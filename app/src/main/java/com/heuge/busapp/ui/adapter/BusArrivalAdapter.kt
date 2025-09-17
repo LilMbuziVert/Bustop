@@ -44,12 +44,16 @@ class BusArrivalAdapter(private var arrivals: List<BusArrival>) :
         holder.delayStatus.text = arrival.delayStatus
 
         when {
-            arrival.delayMinutes > 0 -> holder.delayStatus.setTextColor(
-                holder.itemView.context.getColor(android.R.color.holo_red_dark)
-            )
-            arrival.delayMinutes < 0 -> holder.delayStatus.setTextColor(
-                holder.itemView.context.getColor(android.R.color.holo_green_dark)
-            )
+            arrival.delayMinutes > 0 -> {
+                val typedValue = android.util.TypedValue()
+                holder.itemView.context.theme.resolveAttribute(R.attr.delayLateColor, typedValue, true)
+                holder.delayStatus.setTextColor(typedValue.data)
+            }
+            arrival.delayMinutes < 0 -> {
+                val typedValue = android.util.TypedValue()
+                holder.itemView.context.theme.resolveAttribute(R.attr.delayEarlyColor, typedValue, true)
+                holder.delayStatus.setTextColor(typedValue.data)
+            }
             else -> {
                 // Get theme attribute color for "on time" text
                 val typedValue = android.util.TypedValue()
