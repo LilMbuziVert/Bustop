@@ -61,18 +61,47 @@
         android:orientation="vertical"
         android:layout_marginBottom="16dp"
         android:layout_marginTop="26dp"
-        android:visibility="gone">
+        android:visibility="visible">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/recent_stops"
-            style="@style/EInkText.Large"
+            android:orientation="horizontal"
             android:layout_marginBottom="10dp"
-            app:drawableStartCompat="@drawable/directions_bus_24px"
-            android:drawablePadding="8dp"
-            app:drawableTint="?attr/colorOnBackground"
-            android:paddingStart="12dp"/>
+            android:layout_marginStart="12dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/recentStopsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/recent_stops"
+                style="@style/EInkText.Large"
+                app:drawableStartCompat="@drawable/directions_bus_24px"
+                android:drawablePadding="8dp"
+                app:drawableTint="?attr/colorOnBackground"
+                android:padding="12dp"
+                android:background="@drawable/recent_stops_background"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <TextView
+                android:id="@+id/nearestStopsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text=""
+                style="@style/EInkText.Large"
+                app:drawableStartCompat="@drawable/my_location_24px"
+                android:drawablePadding="0dp"
+                app:drawableTint="@android:color/black"
+                android:padding="12dp"
+                android:background="@drawable/nearest_stops_background"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"/>
+
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recentStopsRecyclerView"

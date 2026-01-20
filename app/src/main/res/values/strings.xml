@@ -3,6 +3,7 @@
     <string name="stop_id">Stop ID</string>
     <string name="next_arrival">Next arrival</string>
     <string name="recent_stops">Recent Stops</string>
+    <string name="nearest_stops">Nearest Stops</string>
     <string name="stop_name">Stop Name</string>
     <string name="no_bus_arrivals_found_for_this_stop">No bus arrivals found for this stop</string>
     <string name="nsw_bus_arrivals">NSW Bus Arrivals</string>

@@ -11,4 +11,9 @@
     <!-- Accent colors (minimal, muted) -->
     <color name="eink_accent_blue">#4A5568</color>
     <color name="eink_accent_red">#E53E3E</color>
+
+    <!-- Other colours -->
+    <color name="eink_yellow">#FFDB58</color>
+    <color name="eink_orange">#FD915A</color>
+    <color name="eink_blue">#5AC6FD</color>
 </resources>

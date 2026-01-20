@@ -46,6 +46,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var noDataTextView: TextView
     private lateinit var recentStopsSection: LinearLayout
 
+    private lateinit var recentStopsButton: TextView
+    private lateinit var nearestStopsButton: TextView
+
     private lateinit var busService: NSWBusService
     private lateinit var adapter: BusArrivalAdapter
     private lateinit var busNumberAdapter: BusNumberAdapter
@@ -64,6 +67,8 @@ class MainActivity : AppCompatActivity() {
 
     // Stores all arrivals so we can filter without losing data
     private var allArrivals: List<BusArrival> = emptyList()
+
+    private var isNearestStopsExpanded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -161,8 +166,14 @@ class MainActivity : AppCompatActivity() {
 
     // Custom animation replacements for e-ink
     private fun eInkFadeIn(view: View) {
-        view.alpha = 0f
-        view.visibility = View.VISIBLE
+        if (view.visibility == View.VISIBLE && view.alpha == 1f) return
+        
+        view.animate().cancel()
+        if (view.visibility != View.VISIBLE) {
+            view.alpha = 0f
+            view.visibility = View.VISIBLE
+        }
+        
         view.animate()
             .alpha(1f)
             .setDuration(200) // Slower for e-ink
@@ -171,11 +182,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun eInkFadeOut(view: View) {
+        if (view.visibility == View.GONE) return
+        
+        view.animate().cancel()
         view.animate()
             .alpha(0f)
             .setDuration(200)
             .setInterpolator(LinearInterpolator())
-            .withEndAction { view.visibility = View.GONE }
+            .withEndAction { 
+                view.visibility = View.GONE 
+                view.alpha = 1f // Reset alpha for next time
+            }
             .start()
     }
 
@@ -237,6 +254,8 @@ class MainActivity : AppCompatActivity() {
         noDataTextView = findViewById(R.id.noDataTextView)
         recentStopsSection = findViewById(R.id.recentStopsSection)
         indicatorContainer = findViewById(R.id.indicatorContainer)
+        recentStopsButton = findViewById(R.id.recentStopsButton)
+        nearestStopsButton = findViewById(R.id.nearestStopsButton)
     }
 
     private fun setupRecyclerView() {
@@ -339,11 +358,15 @@ class MainActivity : AppCompatActivity() {
         val groupCount = (recentStops.size + 2) / 3  // Ceiling division
         setupCarouselIndicator(groupCount)
 
-        // Animate visibility changes using e-ink fade functions
+        // Only animate if visibility is actually changing to avoid "flashing" on every data update
         if (recentStops.isEmpty()) {
-            eInkFadeOut(recentStopsSection)
+            if (recentStopsSection.visibility == View.VISIBLE) {
+                eInkFadeOut(recentStopsSection)
+            }
         } else {
-            eInkFadeIn(recentStopsSection)
+            if (recentStopsSection.visibility != View.VISIBLE) {
+                eInkFadeIn(recentStopsSection)
+            }
         }
     }
 
@@ -360,7 +383,38 @@ class MainActivity : AppCompatActivity() {
         searchBusArrivals(stopId)
     }
 
+    private fun toggleNearestStops() {
+        isNearestStopsExpanded = !isNearestStopsExpanded
+        if (isNearestStopsExpanded) {
+            // Expand Nearest, Shrink Recent
+            nearestStopsButton.text = getString(R.string.nearest_stops)
+            nearestStopsButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.my_location_24px, 0, 0, 0)
+            nearestStopsButton.compoundDrawablePadding = dpToPx(8)
+
+            recentStopsButton.text = ""
+            recentStopsButton.compoundDrawablePadding = 0
+        } else {
+            // Restore default
+            nearestStopsButton.text = ""
+            nearestStopsButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.my_location_24px, 0, 0, 0)
+            nearestStopsButton.compoundDrawablePadding = 0
+
+            recentStopsButton.text = getString(R.string.recent_stops)
+            recentStopsButton.compoundDrawablePadding = dpToPx(8)
+        }
+    }
+
     private fun setupClickListeners() {
+        recentStopsButton.setOnClickListener {
+            if (isNearestStopsExpanded) {
+                toggleNearestStops()
+            }
+        }
+
+        nearestStopsButton.setOnClickListener {
+            toggleNearestStops()
+        }
+
         stopIdTextInputLayout.setEndIconOnClickListener {
             val stopId = stopIdEditText.text.toString().trim()
             if (stopId.isNotEmpty()) {
@@ -466,11 +520,8 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         swipeRefreshLayout.isRefreshing = false
                         if (arrivals.isNotEmpty()) {
-                            eInkFadeOut(busArrivalRecyclerView)
-                            busArrivalRecyclerView.postDelayed({
-                                showResults(arrivals)
-                            }, 200)
-                            //showResults(arrivals)
+                            // Instant update for refresh to avoid double-flashing
+                            showResults(arrivals)
                         } else {
                             showNoData()
                         }
@@ -491,9 +542,10 @@ class MainActivity : AppCompatActivity() {
         progressBar.isIndeterminate = false
         animateProgressBar()
 
-        eInkFadeOut(busArrivalRecyclerView)
-        eInkFadeOut(errorTextView)
-        eInkFadeOut(noDataTextView)
+        // Only fade out if they are currently visible
+        if (busArrivalRecyclerView.visibility == View.VISIBLE) eInkFadeOut(busArrivalRecyclerView)
+        if (errorTextView.visibility == View.VISIBLE) eInkFadeOut(errorTextView)
+        if (noDataTextView.visibility == View.VISIBLE) eInkFadeOut(noDataTextView)
     }
 
 
