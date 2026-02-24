@@ -94,7 +94,7 @@ class NSWBusService (context: Context) {
 
     fun getStopInfo(
         stopId: String,
-        callback: (String?) -> Unit,
+        callback: (String?, String?) -> Unit,
         errorCallback: (String) -> Unit
     ) {
         val url = "https://api.transport.nsw.gov.au/v1/tp/stop_finder?outputFormat=rapidJSON&type_sf=stop&name_sf=$stopId&coordOutputFormat=EPSG%3A4326"
@@ -107,7 +107,7 @@ class NSWBusService (context: Context) {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                callback(null)
+                callback(null, null)
             }
 
             override fun onResponse(call: Call, response: Response) {
@@ -116,18 +116,28 @@ class NSWBusService (context: Context) {
                         val responseBody = response.body?.string() ?: ""
                         try {
                             val stopInfo = json.decodeFromString<StopInfoResponse>(responseBody)
+
+                            // We look at the first location found
+                            val location = stopInfo.locations?.firstOrNull()
+
                             val stopName = stopInfo.locations?.firstOrNull()?.let { location ->
                                 location.name ?: location.disassembledName ?: location.desc
                             }
-                            callback(stopName)
+
+                            // Extract the signId (id) from the location or its nested assignedStops
+                            // Usually, for a stop_finder on a specific ID, the top level ID is the G-number
+                            val rawSignId = location?.id ?: location?.assignedStops?.firstOrNull()?.id
+                            val signId = rawSignId?.replace("G", "") // Clean the "G" prefix
+
+                            callback(stopName, signId)
                         } catch (e: Exception) {
-                            callback(null)
+                            callback(null, null)
                         }
                     } else {
-                        callback(null)
+                        callback(null, null)
                     }
                 } catch (e: Exception) {
-                    callback(null)
+                    callback(null, null)
                 }
             }
         })

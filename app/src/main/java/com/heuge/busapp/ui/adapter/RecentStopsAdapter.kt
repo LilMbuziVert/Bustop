@@ -102,7 +102,7 @@ class RecentStopsAdapter(
             deleteButton: ImageButton
         ) {
             idText.text = stop.signId ?: stop.id
-            nameText.text = stop.name ?: "Stop ${stop.id}"
+            nameText.text = stop.name ?: "Stop ${stop.signId ?: stop.id}"
             
             deleteButton.visibility = if (deleteVisibleStopId == stop.id) View.VISIBLE else View.GONE
 

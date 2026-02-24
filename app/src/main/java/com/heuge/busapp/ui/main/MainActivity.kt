@@ -41,6 +41,7 @@ import com.heuge.busapp.ui.adapter.BusNumberAdapter
 import com.heuge.busapp.ui.adapter.RecentStopsAdapter
 import kotlinx.coroutines.launch
 import androidx.core.view.isGone
+import com.heuge.busapp.data.model.BusStop
 
 class MainActivity : AppCompatActivity() {
     private lateinit var stopIdEditText: EditText
@@ -76,6 +77,10 @@ class MainActivity : AppCompatActivity() {
 
     private var isNearestStopsExpanded = false
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    private var cachedNearbyStops: List<BusStop> = emptyList()
+    private var lastNearbyFetchTime: Long = 0
+    private val CACHE_EXPIRATION_MS = 2 * 60 * 1000 // 2 minutes
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -396,12 +401,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadBusArrivals(stopId: String, signId: String? = null) {
         currentStopId = stopId
-        stopIdEditText.setText(stopId)
-        recentStopsManager.addRecentStop(stopId = stopId, signId = signId)
-        if (!isNearestStopsExpanded) {
-            loadRecentStops()
-        }
-        searchBusArrivals(stopId)
+        stopIdEditText.setText(signId?: stopId)
+        searchBusArrivals(stopId, signId)
     }
 
     private fun toggleNearestStops() {
@@ -415,7 +416,18 @@ class MainActivity : AppCompatActivity() {
             recentStopsButton.text = ""
             recentStopsButton.compoundDrawablePadding = 0
 
-            checkLocationPermissionAndFetch()
+            val currentTime = System.currentTimeMillis()
+            if(cachedNearbyStops.isEmpty() || (currentTime - lastNearbyFetchTime) > CACHE_EXPIRATION_MS) {
+                // Old data / No data, get new data from GPS
+                checkLocationPermissionAndFetch()
+            }
+            else{
+                // Data is fresh -> Just update the UI from memory
+                recentStopsAdapter.updateStops(cachedNearbyStops)
+                val groupCount = (cachedNearbyStops.size + 2) / 3
+                setupCarouselIndicator(groupCount)
+            }
+
         } else {
             // Restore default
             nearestStopsButton.text = ""
@@ -448,6 +460,11 @@ class MainActivity : AppCompatActivity() {
                 if (location != null) {
                     busService.getNearbyStops(location.latitude, location.longitude,
                         callback = { stops ->
+
+                            //Save to cache
+                            cachedNearbyStops = stops
+                            lastNearbyFetchTime = System.currentTimeMillis()
+
                             runOnUiThread {
                                 recentStopsAdapter.updateStops(stops)
                                 val groupCount = (stops.size + 2) / 3
@@ -504,15 +521,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun searchBusArrivals(stopId: String) {
+    private fun searchBusArrivals(stopId: String, signId: String? = null) {
         currentStopId = stopId
         showLoading()
 
         busService.getStopInfo(
             stopId = stopId,
-            callback = { stopName ->
+            callback = { stopName, fetchedSignId->
                 runOnUiThread {
-                    recentStopsManager.addRecentStop(stopId, stopName)
+                    val finalSignId = signId ?: fetchedSignId
+
+                    recentStopsManager.addRecentStop(
+                        stopId = stopId,
+                        stopName = stopName,
+                        signId = finalSignId
+                    )
                     if (!isNearestStopsExpanded) {
                         loadRecentStops()
                     }
@@ -534,12 +557,6 @@ class MainActivity : AppCompatActivity() {
                         hideLoading()
                         if (arrivals.isNotEmpty()) {
                             showResults(arrivals)
-                            if (stopName != null) {
-                                recentStopsManager.addRecentStop(stopId, stopName)
-                                if (!isNearestStopsExpanded) {
-                                    loadRecentStops()
-                                }
-                            }
                         } else {
                             showNoData()
                         }
