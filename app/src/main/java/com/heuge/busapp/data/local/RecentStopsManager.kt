@@ -13,14 +13,18 @@ class RecentStopsManager(context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
     private val maxRecentStops = 10
 
-    fun addRecentStop(stopId: String, stopName: String? = null){
+    fun addRecentStop(stopId: String, stopName: String? = null, signId: String? = null){
         val recentStops = getRecentStops().toMutableList()
 
         //Remove if it already exists
         recentStops.removeAll {it.id == stopId}
 
         //Add to beginning
-        recentStops.add(0, BusStop(stopId, stopName, System.currentTimeMillis()))
+        recentStops.add(0, BusStop(
+            id = stopId,
+            name = stopName,
+            signId = signId,
+            lastUsed = System.currentTimeMillis()))
 
         //take only specified max items
         val trimmedStops = recentStops.take(maxRecentStops)

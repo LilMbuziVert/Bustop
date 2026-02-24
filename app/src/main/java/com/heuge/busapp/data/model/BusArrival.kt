@@ -76,7 +76,8 @@ data class BusArrival(
 
 @Serializable
 data class BusStop(
-    val id: String,
+    val id: String,             // Internal ID (10126815) - used for API calls
+    val signId: String? = null, // Physical ID (2287141) - used for display
     val name: String? = null,
     val lastUsed: Long = System.currentTimeMillis()
 )
@@ -91,7 +92,22 @@ data class StopLocation(
     @SerialName("name")val name: String? = null,
     @SerialName("disassembledName") val disassembledName: String? = null,
     @SerialName("desc") val desc: String? = null,
-    @SerialName("id") val id: String? = null
+    @SerialName("id") val id: String? = null,
+    @SerialName("assignedStops") val assignedStops: List<AssignedStop>? = null,
+)
+
+
+@Serializable
+data class AssignedStop(
+    @SerialName("id") val id: String? = null,
+    @SerialName("name") val name: String? = null,
+    @SerialName("disassembledName") val disassembledName: String? = null,
+    @SerialName("properties") val properties: StopProperties? = null
+)
+
+@Serializable
+data class StopProperties(
+    @SerialName("stopId") val stopId: String? = null
 )
 
 data class BusStopGroup(

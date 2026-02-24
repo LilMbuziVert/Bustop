@@ -6,6 +6,7 @@ import androidx.annotation.RequiresApi
 import com.heuge.busapp.R
 import com.heuge.busapp.data.model.ApiResponse
 import com.heuge.busapp.data.model.BusArrival
+import com.heuge.busapp.data.model.BusStop
 import com.heuge.busapp.data.model.StopInfoResponse
 import kotlinx.serialization.json.Json
 import okhttp3.*
@@ -52,9 +53,6 @@ class NSWBusService (context: Context) {
                 try {
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string() ?: ""
-                        println("wow")
-                        println("swag:$responseBody") //debug
-
                         try {
                             val apiResponse = json.decodeFromString<ApiResponse>(responseBody)
                             val arrivals = apiResponse.stopEvents
@@ -82,8 +80,6 @@ class NSWBusService (context: Context) {
                                 ?.take(5) ?: emptyList()
                             callback(arrivals)
                         } catch (e: Exception) {
-                            println("Parsing error: ${e.message}")
-                            println("Response body: $responseBody")
                             errorCallback("Parsing error: ${e.message}")
                         }
                     } else {
@@ -101,7 +97,6 @@ class NSWBusService (context: Context) {
         callback: (String?) -> Unit,
         errorCallback: (String) -> Unit
     ) {
-        // Stop finder endpoint
         val url = "https://api.transport.nsw.gov.au/v1/tp/stop_finder?outputFormat=rapidJSON&type_sf=stop&name_sf=$stopId&coordOutputFormat=EPSG%3A4326"
 
         val request = Request.Builder()
@@ -112,7 +107,6 @@ class NSWBusService (context: Context) {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                println("Stop info API failed: ${e.message}")
                 callback(null)
             }
 
@@ -120,28 +114,85 @@ class NSWBusService (context: Context) {
                 try {
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string() ?: ""
-
                         try {
-                            val json = Json { ignoreUnknownKeys = true }
                             val stopInfo = json.decodeFromString<StopInfoResponse>(responseBody)
-
-                            // Try different possible fields for the stop name
                             val stopName = stopInfo.locations?.firstOrNull()?.let { location ->
                                 location.name ?: location.disassembledName ?: location.desc
                             }
                             callback(stopName)
                         } catch (e: Exception) {
-                            println("Stop info parsing error: ${e.message}")
-                            println("Response was: $responseBody")
                             callback(null)
                         }
                     } else {
-                        println("Stop info API returned: ${response.code}")
                         callback(null)
                     }
                 } catch (e: Exception) {
-                    println("Stop info error: ${e.message}")
                     callback(null)
+                }
+            }
+        })
+    }
+
+    fun getNearbyStops(
+        lat: Double,
+        lon: Double,
+        callback: (List<BusStop>) -> Unit,
+        errorCallback: (String) -> Unit
+    ) {
+        // 1. Limit decimals to 6 (standard for GPS) to prevent API rejection
+        val formattedLat = "%.6f".format(lat)
+        val formattedLon = "%.6f".format(lon)
+
+        // 2. Updated URL with proximity and type flags
+        val url = "https://api.transport.nsw.gov.au/v1/tp/stop_finder?" +
+                "outputFormat=rapidJSON" +
+                "&type_sf=coord" + // Changed from stop to coord
+                "&name_sf=$formattedLon:$formattedLat:EPSG%3A4326" +
+                "&coordOutputFormat=EPSG%3A4326" +
+                "&anyType_sf=stop" + // We want stops near these coords
+                "&limit=10"
+
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "apikey $apiKey")
+            .addHeader("Accept", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                errorCallback("Network error: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    if (response.isSuccessful) {
+                        val responseBody = response.body?.string() ?: ""
+                        println("API DEBUG: $responseBody")
+                        try {
+                            val stopInfo = json.decodeFromString<StopInfoResponse>(responseBody)
+                            val stops = stopInfo.locations
+                                ?.firstOrNull() // Get the primary location object
+                                ?.assignedStops // Access its list of nearby stops
+                                ?.mapNotNull { assignedStop ->
+                                    // The actual stop ID is inside the 'properties' object
+                                    val internalId = assignedStop.properties?.stopId ?: return@mapNotNull null
+                                    val globalId = assignedStop.id?.replace("G", "") ?: "" // "G2287141" -> "2287141"
+                                    val name = assignedStop.name ?: assignedStop.disassembledName ?: "Stop $internalId"
+                                    BusStop(
+                                        id = internalId,
+                                        signId = globalId,
+                                        name = name
+                                    )
+                                }?.take(6) ?: emptyList() // Take the first 6 stops
+                            callback(stops)
+                        } catch (e: Exception) {
+                            errorCallback("Parsing error: ${e.message}")
+                        }
+                    } else {
+                        errorCallback("API Error: ${response.code}")
+                    }
+                } catch (e: Exception) {
+                    errorCallback("Error: ${e.message}")
                 }
             }
         })

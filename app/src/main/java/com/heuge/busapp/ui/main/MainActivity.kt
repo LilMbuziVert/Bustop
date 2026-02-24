@@ -1,31 +1,36 @@
 package com.heuge.busapp.ui.main
 
+import android.Manifest
+import android.animation.ObjectAnimator
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.view.HapticFeedbackConstants
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
-import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
-import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
 import android.view.animation.LinearInterpolator
-import android.animation.ObjectAnimator
-import android.content.Context
-import android.content.res.Configuration
-import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.PagerSnapHelper
+import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.material.textfield.TextInputLayout
 import com.heuge.busapp.R
 import com.heuge.busapp.data.api.NSWBusService
@@ -35,6 +40,7 @@ import com.heuge.busapp.ui.adapter.BusArrivalAdapter
 import com.heuge.busapp.ui.adapter.BusNumberAdapter
 import com.heuge.busapp.ui.adapter.RecentStopsAdapter
 import kotlinx.coroutines.launch
+import androidx.core.view.isGone
 
 class MainActivity : AppCompatActivity() {
     private lateinit var stopIdEditText: EditText
@@ -69,11 +75,28 @@ class MainActivity : AppCompatActivity() {
     private var allArrivals: List<BusArrival> = emptyList()
 
     private var isNearestStopsExpanded = false
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
+            fetchNearbyStops()
+        } else {
+            Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show()
+            // Revert expansion if permission denied
+            if (isNearestStopsExpanded) toggleNearestStops()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         // Apply e-ink optimizations
         applyEInkOptimizations()
@@ -112,6 +135,9 @@ class MainActivity : AppCompatActivity() {
         val rootLayout = findViewById<View>(R.id.root_layout)
         rootLayout.setOnTouchListener { v, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
+                // Hide any visible delete buttons when clicking outside
+                recentStopsAdapter.hideDeleteButtons()
+                
                 currentFocus?.let { view ->
                     view.clearFocus()
                     val imm = getSystemService(InputMethodManager::class.java)
@@ -166,7 +192,7 @@ class MainActivity : AppCompatActivity() {
 
     // Custom animation replacements for e-ink
     private fun eInkFadeIn(view: View) {
-        if (view.visibility == View.VISIBLE && view.alpha == 1f) return
+        if (view.isVisible && view.alpha == 1f) return
         
         view.animate().cancel()
         if (view.visibility != View.VISIBLE) {
@@ -182,7 +208,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun eInkFadeOut(view: View) {
-        if (view.visibility == View.GONE) return
+        if (view.isGone) return
         
         view.animate().cancel()
         view.animate()
@@ -268,10 +294,15 @@ class MainActivity : AppCompatActivity() {
         val snapHelper = PagerSnapHelper()
         snapHelper.attachToRecyclerView(recentStopsRecyclerView)
 
-        recentStopsAdapter = RecentStopsAdapter { busStop ->
-            // Handle stop selection
-            loadBusArrivals(busStop.id)
-        }
+        recentStopsAdapter = RecentStopsAdapter(
+            onStopClick = { busStop ->
+                loadBusArrivals(stopId = busStop.id, signId = busStop.signId)
+            },
+            onDeleteClick = { busStop ->
+                recentStopsManager.removeStop(busStop.id)
+                loadRecentStops()
+            }
+        )
 
         // Listen for scroll changes to update indicator
         recentStopsRecyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -353,33 +384,23 @@ class MainActivity : AppCompatActivity() {
         val recentStops = recentStopsManager.getRecentStops()
         recentStopsAdapter.updateStops(recentStops)
 
-        // Set up carousel indicator with the actual count
-        // Calculate groups for indicator
-        val groupCount = (recentStops.size + 2) / 3  // Ceiling division
+        val groupCount = (recentStops.size + 2) / 3
         setupCarouselIndicator(groupCount)
 
-        // Only animate if visibility is actually changing to avoid "flashing" on every data update
         if (recentStops.isEmpty()) {
-            if (recentStopsSection.visibility == View.VISIBLE) {
-                eInkFadeOut(recentStopsSection)
-            }
+            if (recentStopsSection.isVisible) eInkFadeOut(recentStopsSection)
         } else {
-            if (recentStopsSection.visibility != View.VISIBLE) {
-                eInkFadeIn(recentStopsSection)
-            }
+            if (recentStopsSection.visibility != View.VISIBLE) eInkFadeIn(recentStopsSection)
         }
     }
 
-    private fun loadBusArrivals(stopId: String) {
+    private fun loadBusArrivals(stopId: String, signId: String? = null) {
         currentStopId = stopId
-        // Fill the search field when clicking a recent stop
         stopIdEditText.setText(stopId)
-
-        // Add to recent stops when clicking a recent stop (moves it to top)
-        recentStopsManager.addRecentStop(stopId)
-        loadRecentStops() // Refresh the UI
-
-        // Call the actual search method
+        recentStopsManager.addRecentStop(stopId = stopId, signId = signId)
+        if (!isNearestStopsExpanded) {
+            loadRecentStops()
+        }
         searchBusArrivals(stopId)
     }
 
@@ -393,6 +414,8 @@ class MainActivity : AppCompatActivity() {
 
             recentStopsButton.text = ""
             recentStopsButton.compoundDrawablePadding = 0
+
+            checkLocationPermissionAndFetch()
         } else {
             // Restore default
             nearestStopsButton.text = ""
@@ -401,7 +424,44 @@ class MainActivity : AppCompatActivity() {
 
             recentStopsButton.text = getString(R.string.recent_stops)
             recentStopsButton.compoundDrawablePadding = dpToPx(8)
+            
+            loadRecentStops()
         }
+    }
+
+    private fun checkLocationPermissionAndFetch() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissionLauncher.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
+            return
+        }
+        fetchNearbyStops()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun fetchNearbyStops() {
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    busService.getNearbyStops(location.latitude, location.longitude,
+                        callback = { stops ->
+                            runOnUiThread {
+                                recentStopsAdapter.updateStops(stops)
+                                val groupCount = (stops.size + 2) / 3
+                                setupCarouselIndicator(groupCount)
+                            }
+                        },
+                        errorCallback = { error ->
+                            runOnUiThread { Toast.makeText(this, error, Toast.LENGTH_SHORT).show() }
+                        }
+                    )
+                } else {
+                    Toast.makeText(this, "Could not get location", Toast.LENGTH_SHORT).show()
+                }
+            }
     }
 
     private fun setupClickListeners() {
@@ -424,7 +484,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Handle Enter key press
         stopIdEditText.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH ||
                 actionId == EditorInfo.IME_ACTION_DONE ||
@@ -433,15 +492,14 @@ class MainActivity : AppCompatActivity() {
                 val stopId = stopIdEditText.text.toString().trim()
                 if (stopId.isNotEmpty()) {
                     searchBusArrivals(stopId)
-                    // Hide keyboard after search
-                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                     imm.hideSoftInputFromWindow(stopIdEditText.windowToken, 0)
                 } else {
                     showError("Please enter a stop ID")
                 }
-                true // Consume the event
+                true
             } else {
-                false // Don't consume the event
+                false
             }
         }
     }
@@ -450,22 +508,18 @@ class MainActivity : AppCompatActivity() {
         currentStopId = stopId
         showLoading()
 
-        // First, try to get the stop name
         busService.getStopInfo(
             stopId = stopId,
             callback = { stopName ->
-                // Add to recent stops with the actual name
                 runOnUiThread {
                     recentStopsManager.addRecentStop(stopId, stopName)
-                    loadRecentStops()
+                    if (!isNearestStopsExpanded) {
+                        loadRecentStops()
+                    }
                 }
-
-                // Then get the bus arrivals
                 getBusArrivalsWithStopName(stopId, stopName)
             },
-            errorCallback = { error ->
-                // If stop info fails, still try to get arrivals but without name
-                println("Stop info error: $error")
+            errorCallback = { _ ->
                 getBusArrivalsWithStopName(stopId, null)
             }
         )
@@ -480,10 +534,11 @@ class MainActivity : AppCompatActivity() {
                         hideLoading()
                         if (arrivals.isNotEmpty()) {
                             showResults(arrivals)
-                            // Update recent stops with name if we got it
                             if (stopName != null) {
                                 recentStopsManager.addRecentStop(stopId, stopName)
-                                loadRecentStops()
+                                if (!isNearestStopsExpanded) {
+                                    loadRecentStops()
+                                }
                             }
                         } else {
                             showNoData()
@@ -503,10 +558,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshCurrentStopData() {
         currentStopId?.let { stopId ->
-            // Don't show the main progress bar during refresh
             refreshBusArrivals(stopId)
         } ?: run {
-            // No current stop to refresh
             swipeRefreshLayout.isRefreshing = false
         }
     }
@@ -520,7 +573,6 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         swipeRefreshLayout.isRefreshing = false
                         if (arrivals.isNotEmpty()) {
-                            // Instant update for refresh to avoid double-flashing
                             showResults(arrivals)
                         } else {
                             showNoData()
@@ -542,10 +594,9 @@ class MainActivity : AppCompatActivity() {
         progressBar.isIndeterminate = false
         animateProgressBar()
 
-        // Only fade out if they are currently visible
-        if (busArrivalRecyclerView.visibility == View.VISIBLE) eInkFadeOut(busArrivalRecyclerView)
-        if (errorTextView.visibility == View.VISIBLE) eInkFadeOut(errorTextView)
-        if (noDataTextView.visibility == View.VISIBLE) eInkFadeOut(noDataTextView)
+        if (busArrivalRecyclerView.isVisible) eInkFadeOut(busArrivalRecyclerView)
+        if (errorTextView.isVisible) eInkFadeOut(errorTextView)
+        if (noDataTextView.isVisible) eInkFadeOut(noDataTextView)
     }
 
 
@@ -581,7 +632,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun filterByBusNumber(busNumber: String) {
         if (busNumber == "All") {
-            adapter.updateArrivals(allArrivals) // show everything
+            adapter.updateArrivals(allArrivals)
         } else {
             val filteredArrivals = allArrivals.filter { it.routeName == busNumber }
             if (filteredArrivals.isNotEmpty()) {

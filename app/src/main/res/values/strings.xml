@@ -8,4 +8,5 @@
     <string name="no_bus_arrivals_found_for_this_stop">No bus arrivals found for this stop</string>
     <string name="nsw_bus_arrivals">NSW Bus Arrivals</string>
     <string name="to_example_destination">To Example Destination</string>
+    <string name="delete_stop">Delete stop</string>
 </resources>

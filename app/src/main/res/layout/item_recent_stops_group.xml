@@ -9,34 +9,52 @@
     android:weightSum="3">
 
     <!-- First stop -->
-    <LinearLayout
-        android:id="@+id/firstStopContainer"
+    <FrameLayout
         android:layout_width="0dp"
         android:layout_height="160dp"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:padding="18dp"
-        android:gravity="center">
+        android:layout_weight="1">
 
-        <TextView
-            android:id="@+id/firstStopIdText"
+        <LinearLayout
+            android:id="@+id/firstStopContainer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/EInkText.Large"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="18dp"
             android:gravity="center"
-            android:layout_marginBottom="8dp" />
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?android:attr/selectableItemBackground">
 
-        <TextView
-            android:id="@+id/firstStopNameText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/EInkText.Small"
-            android:gravity="center"
-            android:minHeight="64dp"
-            android:maxLines="4"
-            android:ellipsize="end" />
+            <TextView
+                android:id="@+id/firstStopIdText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.Large"
+                android:gravity="center"
+                android:layout_marginBottom="8dp" />
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/firstStopNameText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.Small"
+                android:gravity="center"
+                android:minHeight="64dp"
+                android:maxLines="4"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/firstDeleteButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="4dp"
+            android:src="@drawable/close_24px"
+            android:background="@drawable/eink_button_background"
+            android:visibility="gone"
+            android:contentDescription="@string/delete_stop" />
+    </FrameLayout>
 
     <!-- Vertical separator -->
     <View
@@ -47,35 +65,54 @@
         android:layout_marginVertical="12dp" />
 
     <!-- Second stop -->
-    <LinearLayout
-        android:id="@+id/secondStopContainer"
+    <FrameLayout
+        android:id="@+id/secondStopFrame"
         android:layout_width="0dp"
         android:layout_height="160dp"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:padding="18dp"
-        android:gravity="center"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/secondStopIdText"
+        <LinearLayout
+            android:id="@+id/secondStopContainer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/EInkText.Large"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="18dp"
             android:gravity="center"
-            android:layout_marginBottom="8dp" />
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?android:attr/selectableItemBackground">
 
-        <TextView
-            android:id="@+id/secondStopNameText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/EInkText.Small"
-            android:gravity="center"
-            android:minHeight="64dp"
-            android:maxLines="4"
-            android:ellipsize="end" />
+            <TextView
+                android:id="@+id/secondStopIdText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.Large"
+                android:gravity="center"
+                android:layout_marginBottom="8dp" />
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/secondStopNameText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.Small"
+                android:gravity="center"
+                android:minHeight="64dp"
+                android:maxLines="4"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/secondDeleteButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="4dp"
+            android:src="@drawable/close_24px"
+            android:background="@drawable/eink_button_background"
+            android:visibility="gone"
+            android:contentDescription="@string/delete_stop" />
+    </FrameLayout>
 
     <!-- Vertical separator -->
     <View
@@ -87,34 +124,53 @@
         android:visibility="gone"/>
 
     <!-- Third stop -->
-    <LinearLayout
-        android:id="@+id/thirdStopContainer"
+    <FrameLayout
+        android:id="@+id/thirdStopFrame"
         android:layout_width="0dp"
         android:layout_height="160dp"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:padding="18dp"
-        android:gravity="center"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/thirdStopIdText"
+        <LinearLayout
+            android:id="@+id/thirdStopContainer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/EInkText.Large"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="18dp"
             android:gravity="center"
-            android:layout_marginBottom="8dp" />
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?android:attr/selectableItemBackground">
 
-        <TextView
-            android:id="@+id/thirdStopNameText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/EInkText.Small"
-            android:gravity="center"
-            android:minHeight="64dp"
-            android:maxLines="4"
-            android:ellipsize="end" />
+            <TextView
+                android:id="@+id/thirdStopIdText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.Large"
+                android:gravity="center"
+                android:layout_marginBottom="8dp" />
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/thirdStopNameText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/EInkText.Small"
+                android:gravity="center"
+                android:minHeight="64dp"
+                android:maxLines="4"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/thirdDeleteButton"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="4dp"
+            android:src="@drawable/close_24px"
+            android:background="@drawable/eink_button_background"
+            android:visibility="gone"
+            android:contentDescription="@string/delete_stop" />
+    </FrameLayout>
 
 </LinearLayout>
