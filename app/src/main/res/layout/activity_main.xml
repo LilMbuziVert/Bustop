@@ -18,40 +18,60 @@
         android:textColor="?attr/appOnBackground"
         android:text="@string/nsw_bus_arrivals"
         style="@style/EInkText.Large"
-        android:gravity="center"
+        android:gravity="start"
         android:layout_marginTop="24dp"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="32dp"
+        android:layout_marginStart="12dp"/>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/stopIdTextInputLayout"
-        android:layout_width="match_parent"
+    <!-- Custom Search Section -->
+    <LinearLayout
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="bottom"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:hint="@string/stop_id"
-        app:boxBackgroundMode="outline"
-        app:boxStrokeColor="@color/box_stroke_color"
-        app:boxBackgroundColor="?attr/appBackground"
-        app:hintTextColor="?attr/appOnSurface"
-        app:boxCornerRadiusTopStart="20dp"
-        app:boxCornerRadiusTopEnd="20dp"
-        app:boxCornerRadiusBottomStart="20dp"
-        app:boxCornerRadiusBottomEnd="20dp"
-        android:layout_marginBottom="16dp"
-        app:endIconMode="custom"
-        app:endIconDrawable="@drawable/search_24px"
-        app:endIconTint="?attr/appOnSurface">
+        android:layout_marginBottom="48dp">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/stopIdEditText"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            style="@style/EInkText.Medium"
-            android:textColor="?attr/appOnBackground"
-            android:padding="12dp"
-            android:singleLine="true"
-            android:inputType="number"/>
-    </com.google.android.material.textfield.TextInputLayout>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/stopIdEditText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                style="@style/EInkText.SearchNumber"
+                android:hint="2287141"
+                android:textColorHint="?attr/appOnSurface"
+                android:inputType="number"
+                android:singleLine="true"
+                android:padding="0dp"
+                android:imeOptions="actionSearch"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:background="?attr/appOnBackground"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/searchIcon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/search_24px"
+            app:tint="?attr/appOnBackground"
+            android:padding="8dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+    </LinearLayout>
 
     <!-- Recent Stops Section -->
     <LinearLayout
@@ -60,7 +80,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_marginBottom="16dp"
-        android:layout_marginTop="26dp"
         android:visibility="visible">
 
         <LinearLayout
@@ -76,14 +95,17 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/recent_stops"
-                style="@style/EInkText.Large"
+                style="@style/EInkText.Medium"
+                android:textColor="@android:color/black"
                 app:drawableStartCompat="@drawable/directions_bus_24px"
                 android:drawablePadding="8dp"
-                app:drawableTint="?attr/colorOnBackground"
-                android:padding="12dp"
+                app:drawableTint="@android:color/black"
+                android:paddingVertical="10dp"
+                android:paddingHorizontal="12dp"
                 android:background="@drawable/recent_stops_background"
                 android:clickable="true"
-                android:focusable="true"/>
+                android:focusable="true"
+                android:textStyle="bold"/>
 
             <TextView
                 android:id="@+id/nearestStopsButton"
@@ -91,15 +113,17 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text=""
-                style="@style/EInkText.Large"
+                style="@style/EInkText.Medium"
+                android:textColor="@android:color/black"
                 app:drawableStartCompat="@drawable/my_location_24px"
                 android:drawablePadding="0dp"
                 app:drawableTint="@android:color/black"
-                android:padding="12dp"
+                android:padding="10dp"
                 android:background="@drawable/nearest_stops_background"
                 android:clickable="true"
                 android:focusable="true"
-                android:gravity="center"/>
+                android:gravity="center"
+                android:textStyle="bold"/>
 
         </LinearLayout>
 
@@ -154,7 +178,7 @@
         android:id="@+id/busNumberRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="4dp"
         android:orientation="horizontal"
         android:paddingStart="12dp"/>
 

@@ -2,9 +2,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Dark mode app theme -->
     <style name="Theme.Bustop" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <!-- Dark background with light text -->
-        <item name="appBackground">@color/eink_black</item>
-        <item name="appOnBackground">@color/eink_white</item>
+        <!-- Pure black background with off-white text -->
+        <item name="appBackground">#000000</item>
+        <item name="appOnBackground">@color/eink_off_white</item>
         <item name="appOnSurface">@color/eink_medium_gray</item>
         <item name="appErrorColor">@color/eink_accent_red</item>
         <item name="appScrollbarColor">@color/eink_medium_gray</item>
@@ -12,7 +12,7 @@
         <item name="delayEarlyColor">#4ECDC4</item> <!-- Lighter green for dark mode -->
 
         <!-- Status bar configuration -->
-        <item name="android:statusBarColor">@color/eink_black</item>
+        <item name="android:statusBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

@@ -31,7 +31,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.android.material.textfield.TextInputLayout
 import com.heuge.busapp.R
 import com.heuge.busapp.data.api.NSWBusService
 import com.heuge.busapp.data.local.RecentStopsManager
@@ -45,7 +44,7 @@ import com.heuge.busapp.data.model.BusStop
 
 class MainActivity : AppCompatActivity() {
     private lateinit var stopIdEditText: EditText
-    private lateinit var stopIdTextInputLayout: TextInputLayout
+    private lateinit var searchIcon: ImageView
     private lateinit var progressBar: ProgressBar
     private lateinit var busArrivalRecyclerView: RecyclerView
     private lateinit var recentStopsRecyclerView: RecyclerView
@@ -132,6 +131,10 @@ class MainActivity : AppCompatActivity() {
         setupBusNumberRecyclerView()
         setupSwipeRefresh()
         loadRecentStops()
+        
+        // Initial button states
+        recentStopsButton.isSelected = true
+        nearestStopsButton.isSelected = false
     }
 
 
@@ -276,7 +279,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeViews() {
         stopIdEditText = findViewById(R.id.stopIdEditText)
-        stopIdTextInputLayout = findViewById(R.id.stopIdTextInputLayout)
+        searchIcon = findViewById(R.id.searchIcon)
         progressBar = findViewById(R.id.progressBar)
         busArrivalRecyclerView = findViewById(R.id.recyclerView)
         swipeRefreshLayout = findViewById(R.id.swipeRefresh)
@@ -409,6 +412,9 @@ class MainActivity : AppCompatActivity() {
         isNearestStopsExpanded = !isNearestStopsExpanded
         if (isNearestStopsExpanded) {
             // Expand Nearest, Shrink Recent
+            nearestStopsButton.isSelected = true
+            recentStopsButton.isSelected = false
+            
             nearestStopsButton.text = getString(R.string.nearest_stops)
             nearestStopsButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.my_location_24px, 0, 0, 0)
             nearestStopsButton.compoundDrawablePadding = dpToPx(8)
@@ -430,6 +436,9 @@ class MainActivity : AppCompatActivity() {
 
         } else {
             // Restore default
+            recentStopsButton.isSelected = true
+            nearestStopsButton.isSelected = false
+
             nearestStopsButton.text = ""
             nearestStopsButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.my_location_24px, 0, 0, 0)
             nearestStopsButton.compoundDrawablePadding = 0
@@ -489,13 +498,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         nearestStopsButton.setOnClickListener {
-            toggleNearestStops()
+            if (!isNearestStopsExpanded) {
+                toggleNearestStops()
+            }
         }
 
-        stopIdTextInputLayout.setEndIconOnClickListener {
+        searchIcon.setOnClickListener {
             val stopId = stopIdEditText.text.toString().trim()
             if (stopId.isNotEmpty()) {
                 searchBusArrivals(stopId)
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(stopIdEditText.windowToken, 0)
             } else {
                 showError("Please enter a stop ID")
             }
