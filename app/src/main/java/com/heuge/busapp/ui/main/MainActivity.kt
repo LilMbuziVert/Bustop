@@ -395,10 +395,9 @@ class MainActivity : AppCompatActivity() {
         val groupCount = (recentStops.size + 2) / 3
         setupCarouselIndicator(groupCount)
 
-        if (recentStops.isEmpty()) {
-            if (recentStopsSection.isVisible) eInkFadeOut(recentStopsSection)
-        } else {
-            if (recentStopsSection.visibility != View.VISIBLE) eInkFadeIn(recentStopsSection)
+        // Always show the section (buttons) even if empty
+        if (recentStopsSection.visibility != View.VISIBLE) {
+            eInkFadeIn(recentStopsSection)
         }
     }
 
