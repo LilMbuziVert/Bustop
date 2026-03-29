@@ -127,6 +127,19 @@
 
         </LinearLayout>
 
+        <com.facebook.shimmer.ShimmerFrameLayout
+            android:id="@+id/recentStopsShimmer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            app:shimmer_auto_start="true"
+            app:shimmer_base_alpha="0.5"
+            app:shimmer_duration="1000">
+
+            <include layout="@layout/item_recent_stops_skeleton" />
+
+        </com.facebook.shimmer.ShimmerFrameLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recentStopsRecyclerView"
             android:layout_width="match_parent"

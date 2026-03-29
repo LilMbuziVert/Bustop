@@ -72,6 +72,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.swiperefreshlayout)
 
+    //Loading
+    implementation(libs.facebook.shimmer)
+
     // Networking and JSON
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)

@@ -1,6 +1,6 @@
 [versions]
-agp = "8.13.2"
-kotlin = "2.0.21"
+agp = "9.1.0"
+kotlin = "2.2.10"
 coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -19,6 +19,7 @@ kotlinx-coroutines = "1.7.3"
 coreAnimation = "1.0.0"
 swipeRefresh = "1.1.0"
 playServicesLocation = "21.3.0"
+shimmer = "0.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -45,6 +46,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 androidx-core-animation = { group = "androidx.core", name = "core-animation", version.ref = "coreAnimation" }
 swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swipeRefresh" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+facebook-shimmer = { group = "com.facebook.shimmer", name = "shimmer", version.ref = "shimmer" }
 
 
 [plugins]

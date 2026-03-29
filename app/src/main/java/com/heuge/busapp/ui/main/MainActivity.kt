@@ -40,6 +40,7 @@ import com.heuge.busapp.ui.adapter.BusNumberAdapter
 import com.heuge.busapp.ui.adapter.RecentStopsAdapter
 import kotlinx.coroutines.launch
 import androidx.core.view.isGone
+import com.facebook.shimmer.ShimmerFrameLayout
 import com.heuge.busapp.data.model.BusStop
 
 class MainActivity : AppCompatActivity() {
@@ -54,6 +55,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var recentStopsButton: TextView
     private lateinit var nearestStopsButton: TextView
+    private lateinit var recentStopsShimmer: ShimmerFrameLayout
 
     private lateinit var busService: NSWBusService
     private lateinit var adapter: BusArrivalAdapter
@@ -290,6 +292,7 @@ class MainActivity : AppCompatActivity() {
         indicatorContainer = findViewById(R.id.indicatorContainer)
         recentStopsButton = findViewById(R.id.recentStopsButton)
         nearestStopsButton = findViewById(R.id.nearestStopsButton)
+        recentStopsShimmer = findViewById(R.id.recentStopsShimmer)
     }
 
     private fun setupRecyclerView() {
@@ -389,6 +392,11 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun loadRecentStops() {
+        // Ensure shimmer is hidden when loading recent stops (local)
+        recentStopsShimmer.stopShimmer()
+        recentStopsShimmer.visibility = View.GONE
+        recentStopsRecyclerView.visibility = View.VISIBLE
+
         val recentStops = recentStopsManager.getRecentStops()
         recentStopsAdapter.updateStops(recentStops)
 
@@ -428,6 +436,10 @@ class MainActivity : AppCompatActivity() {
             }
             else{
                 // Data is fresh -> Just update the UI from memory
+                recentStopsShimmer.stopShimmer()
+                recentStopsShimmer.visibility = View.GONE
+                recentStopsRecyclerView.visibility = View.VISIBLE
+                
                 recentStopsAdapter.updateStops(cachedNearbyStops)
                 val groupCount = (cachedNearbyStops.size + 2) / 3
                 setupCarouselIndicator(groupCount)
@@ -463,6 +475,12 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("MissingPermission")
     private fun fetchNearbyStops() {
+        // Show Shimmer while fetching
+        recentStopsRecyclerView.visibility = View.GONE
+        indicatorContainer.visibility = View.GONE
+        recentStopsShimmer.visibility = View.VISIBLE
+        recentStopsShimmer.startShimmer()
+
         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
             .addOnSuccessListener { location ->
                 if (location != null) {
@@ -474,16 +492,28 @@ class MainActivity : AppCompatActivity() {
                             lastNearbyFetchTime = System.currentTimeMillis()
 
                             runOnUiThread {
+                                recentStopsShimmer.stopShimmer()
+                                recentStopsShimmer.visibility = View.GONE
+                                recentStopsRecyclerView.visibility = View.VISIBLE
+                                
                                 recentStopsAdapter.updateStops(stops)
                                 val groupCount = (stops.size + 2) / 3
                                 setupCarouselIndicator(groupCount)
                             }
                         },
                         errorCallback = { error ->
-                            runOnUiThread { Toast.makeText(this, error, Toast.LENGTH_SHORT).show() }
+                            runOnUiThread { 
+                                recentStopsShimmer.stopShimmer()
+                                recentStopsShimmer.visibility = View.GONE
+                                recentStopsRecyclerView.visibility = View.VISIBLE
+                                Toast.makeText(this, error, Toast.LENGTH_SHORT).show() 
+                            }
                         }
                     )
                 } else {
+                    recentStopsShimmer.stopShimmer()
+                    recentStopsShimmer.visibility = View.GONE
+                    recentStopsRecyclerView.visibility = View.VISIBLE
                     Toast.makeText(this, "Could not get location", Toast.LENGTH_SHORT).show()
                 }
             }
