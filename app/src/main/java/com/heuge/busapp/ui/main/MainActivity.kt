@@ -21,6 +21,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
@@ -28,6 +29,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.facebook.shimmer.ShimmerFrameLayout
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -35,13 +37,12 @@ import com.heuge.busapp.R
 import com.heuge.busapp.data.api.NSWBusService
 import com.heuge.busapp.data.local.RecentStopsManager
 import com.heuge.busapp.data.model.BusArrival
+import com.heuge.busapp.data.model.BusStop
+import com.heuge.busapp.data.model.TravelAlert
 import com.heuge.busapp.ui.adapter.BusArrivalAdapter
 import com.heuge.busapp.ui.adapter.BusNumberAdapter
 import com.heuge.busapp.ui.adapter.RecentStopsAdapter
 import kotlinx.coroutines.launch
-import androidx.core.view.isGone
-import com.facebook.shimmer.ShimmerFrameLayout
-import com.heuge.busapp.data.model.BusStop
 
 class MainActivity : AppCompatActivity() {
     private lateinit var stopIdEditText: EditText
@@ -55,7 +56,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var recentStopsButton: TextView
     private lateinit var nearestStopsButton: TextView
+    private lateinit var alertsButton: TextView
     private lateinit var recentStopsShimmer: ShimmerFrameLayout
+
+    private lateinit var alertsSection: LinearLayout
+    private lateinit var alertsRecyclerView: RecyclerView
+    private lateinit var noAlertsText: TextView
+    private lateinit var alertsAdapter: com.heuge.busapp.ui.adapter.TravelAlertAdapter
+    private lateinit var carouselContainer: LinearLayout
+    private lateinit var appBarLayout: com.google.android.material.appbar.AppBarLayout
 
     private lateinit var busService: NSWBusService
     private lateinit var adapter: BusArrivalAdapter
@@ -133,6 +142,7 @@ class MainActivity : AppCompatActivity() {
         setupBusNumberRecyclerView()
         setupSwipeRefresh()
         loadRecentStops()
+        updateScrollFlags(false)
         
         // Initial button states
         recentStopsButton.isSelected = true
@@ -292,13 +302,24 @@ class MainActivity : AppCompatActivity() {
         indicatorContainer = findViewById(R.id.indicatorContainer)
         recentStopsButton = findViewById(R.id.recentStopsButton)
         nearestStopsButton = findViewById(R.id.nearestStopsButton)
+        alertsButton = findViewById(R.id.alertsButton)
         recentStopsShimmer = findViewById(R.id.recentStopsShimmer)
+
+        alertsSection = findViewById(R.id.alertsSection)
+        alertsRecyclerView = findViewById(R.id.alertsRecyclerView)
+        noAlertsText = findViewById(R.id.noAlertsText)
+        carouselContainer = findViewById(R.id.carouselContainer)
+        appBarLayout = findViewById(R.id.appBarLayout)
     }
 
     private fun setupRecyclerView() {
         adapter = BusArrivalAdapter(emptyList())
         busArrivalRecyclerView.layoutManager = LinearLayoutManager(this)
         busArrivalRecyclerView.adapter = adapter
+
+        alertsAdapter = com.heuge.busapp.ui.adapter.TravelAlertAdapter(emptyList())
+        alertsRecyclerView.layoutManager = LinearLayoutManager(this)
+        alertsRecyclerView.adapter = alertsAdapter
     }
 
     private fun setupRecentStopsRecyclerView() {
@@ -532,6 +553,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        alertsButton.setOnClickListener {
+            toggleAlertsSection()
+        }
+
         searchIcon.setOnClickListener {
             val stopId = stopIdEditText.text.toString().trim()
             if (stopId.isNotEmpty()) {
@@ -561,6 +586,40 @@ class MainActivity : AppCompatActivity() {
                 false
             }
         }
+    }
+
+    private fun toggleAlertsSection() {
+        if (alertsSection.visibility == View.VISIBLE) {
+            eInkFadeOut(alertsSection)
+            alertsButton.isSelected = false
+        } else {
+            eInkFadeIn(alertsSection)
+            alertsButton.isSelected = true
+            fetchTravelAlerts()
+        }
+    }
+
+    private fun fetchTravelAlerts() {
+        busService.getTravelAlerts(
+            callback = { alerts ->
+                runOnUiThread {
+                    if (alerts.isEmpty()) {
+                        alertsRecyclerView.visibility = View.GONE
+                        noAlertsText.visibility = View.VISIBLE
+                    } else {
+                        noAlertsText.visibility = View.GONE
+                        alertsRecyclerView.visibility = View.VISIBLE
+                        alertsAdapter.updateAlerts(alerts)
+                    }
+                }
+            },
+            errorCallback = { _ ->
+                runOnUiThread {
+                    alertsRecyclerView.visibility = View.GONE
+                    noAlertsText.visibility = View.VISIBLE
+                }
+            }
+        )
     }
 
     private fun searchBusArrivals(stopId: String, signId: String? = null) {
@@ -648,7 +707,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateScrollFlags(canScroll: Boolean) {
+        val params = carouselContainer.layoutParams as com.google.android.material.appbar.AppBarLayout.LayoutParams
+        if (canScroll) {
+            params.scrollFlags = com.google.android.material.appbar.AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or
+                    com.google.android.material.appbar.AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
+        } else {
+            params.scrollFlags = 0
+            // Force it to expand and stay expanded instantly
+            appBarLayout.setExpanded(true, false)
+        }
+        carouselContainer.layoutParams = params
+
+        // Lock manual dragging of the AppBar via touch on the header itself
+        val appBarParams = appBarLayout.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
+        val behavior = appBarParams.behavior as? com.google.android.material.appbar.AppBarLayout.Behavior
+        behavior?.setDragCallback(object : com.google.android.material.appbar.AppBarLayout.Behavior.DragCallback() {
+            override fun canDrag(appBarLayout: com.google.android.material.appbar.AppBarLayout): Boolean = canScroll
+        })
+
+        // Prevent the content below from triggering AppBar scroll
+        swipeRefreshLayout.isNestedScrollingEnabled = canScroll
+        busArrivalRecyclerView.isNestedScrollingEnabled = canScroll
+    }
+
     private fun showLoading() {
+        updateScrollFlags(false)
         eInkFadeIn(progressBar)
         progressBar.isIndeterminate = false
         animateProgressBar()
@@ -664,6 +748,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showResults(arrivals: List<BusArrival>) {
+        updateScrollFlags(true)
         allArrivals = arrivals
         adapter.updateArrivals(arrivals)
 
@@ -677,6 +762,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showError(message: String) {
+        updateScrollFlags(false)
         errorTextView.text = message
         eInkFadeIn(errorTextView)
         eInkFadeOut(busArrivalRecyclerView)
@@ -684,6 +770,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showNoData() {
+        updateScrollFlags(false)
         eInkFadeIn(noDataTextView)
         eInkFadeOut(busArrivalRecyclerView)
         eInkFadeOut(errorTextView)

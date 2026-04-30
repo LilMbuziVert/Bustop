@@ -9,4 +9,6 @@
     <string name="nsw_bus_arrivals">NSW Bus Arrivals</string>
     <string name="to_example_destination">To Example Destination</string>
     <string name="delete_stop">Delete stop</string>
+    <string name="travel_alerts">Travel Alerts</string>
+    <string name="no_alerts">NO ALERTS :)</string>
 </resources>

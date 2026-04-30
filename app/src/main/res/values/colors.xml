@@ -16,5 +16,6 @@
     <!-- Other colours -->
     <color name="eink_yellow">#FFDB58</color>
     <color name="eink_orange">#FD915A</color>
+    <color name="eink_darker_orange">#FF4F00</color>
     <color name="eink_blue">#5AC6FD</color>
 </resources>

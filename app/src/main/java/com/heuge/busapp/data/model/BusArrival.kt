@@ -110,6 +110,57 @@ data class StopProperties(
     @SerialName("stopId") val stopId: String? = null
 )
 
+@Serializable
+data class AlertResponse(
+    @SerialName("infos") val infos: AlertInfoContainer? = null
+)
+
+@Serializable
+data class AlertInfoContainer(
+    @SerialName("current") val current: List<AlertInfo>? = null
+)
+
+@Serializable
+data class AlertInfo(
+    @SerialName("priority") val priority: String? = null,
+    @SerialName("content") val content: String? = null,
+    @SerialName("subtitle") val subtitle: String? = null,
+    @SerialName("timestamps") val timestamps: AlertTimestamps? = null,
+    @SerialName("affected") val affected: AffectedDetails? = null
+)
+
+@Serializable
+data class AlertTimestamps(
+    @SerialName("availability") val availability: Availability? = null
+)
+@Serializable
+data class Availability(
+    @SerialName("from") val from: String? = null, // ISO-8601 string
+    @SerialName("to") val to: String? = null
+)
+@Serializable
+data class AffectedDetails(
+    @SerialName("stops") val stops: List<AffectedStop>? = null,
+    @SerialName("lines") val lines: List<AffectedLine>? = null
+)
+
+@Serializable
+data class AffectedStop(
+    @SerialName("id") val id: String? = null,
+    @SerialName("name") val name: String? = null
+)
+@Serializable
+data class AffectedLine(
+    @SerialName("id") val id: String? = null,
+    @SerialName("name") val name: String? = null,
+    @SerialName("description") val description: String? = null
+)
+data class TravelAlert(
+    val title: String,
+    val content: String,
+    val priority: String? = null
+)
+
 data class BusStopGroup(
     val stops: List<BusStop>
 ) {

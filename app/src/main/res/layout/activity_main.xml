@@ -29,7 +29,7 @@
         android:gravity="bottom"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:layout_marginBottom="48dp">
+        android:layout_marginBottom="24dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -70,14 +70,16 @@
             android:background="?attr/selectableItemBackgroundBorderless"/>
     </LinearLayout>
 
-    <!-- Fixed Header: Section Buttons -->
+    <!-- Sticky Header: Section Buttons (Outside CoordinatorLayout to stay truly fixed) -->
     <LinearLayout
         android:id="@+id/recentStopsSection"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="10dp"
-        android:layout_marginStart="12dp"
+        android:paddingBottom="10dp"
+        android:paddingTop="4dp"
+        android:paddingStart="12dp"
+        android:background="?attr/appBackground"
         android:gravity="center_vertical">
 
         <TextView
@@ -114,6 +116,24 @@
             android:focusable="true"
             android:gravity="center"
             android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/alertsButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text=""
+            style="@style/EInkText.Medium"
+            android:textColor="@color/alert_content_color"
+            app:drawableStartCompat="@drawable/warning_24px"
+            android:drawablePadding="0dp"
+            app:drawableTint="@color/alert_content_color"
+            android:padding="10dp"
+            android:background="@drawable/travel_alert_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:textStyle="bold"/>
     </LinearLayout>
 
     <!-- CoordinatorLayout for Scrollable Carousel and Arrivals -->
@@ -129,13 +149,52 @@
             android:background="?attr/appBackground"
             app:elevation="0dp">
 
-            <!-- The Carousel scrolls away -->
+            <!-- The Carousel and Alerts scroll away -->
             <LinearLayout
                 android:id="@+id/carouselContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 app:layout_scrollFlags="scroll|enterAlways">
+
+                <!-- Travel Alerts Section moved inside AppBarLayout to scroll with content -->
+                <LinearLayout
+                    android:id="@+id/alertsSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/alerts_border">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/travel_alerts"
+                        style="@style/EInkText.Medium"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"/>
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/alertsRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"/>
+
+                    <TextView
+                        android:id="@+id/noAlertsText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:text="@string/no_alerts"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        style="@style/EInkText.Medium"
+                        android:textStyle="bold"/>
+                </LinearLayout>
 
                 <com.facebook.shimmer.ShimmerFrameLayout
                     android:id="@+id/recentStopsShimmer"

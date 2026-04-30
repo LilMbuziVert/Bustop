@@ -8,8 +8,11 @@ import com.heuge.busapp.data.model.ApiResponse
 import com.heuge.busapp.data.model.BusArrival
 import com.heuge.busapp.data.model.BusStop
 import com.heuge.busapp.data.model.StopInfoResponse
+import com.heuge.busapp.data.model.AlertResponse
+import com.heuge.busapp.data.model.TravelAlert
 import kotlinx.serialization.json.Json
 import okhttp3.*
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.IOException
 import java.time.Duration
 import java.time.OffsetDateTime
@@ -177,7 +180,6 @@ class NSWBusService (context: Context) {
                 try {
                     if (response.isSuccessful) {
                         val responseBody = response.body?.string() ?: ""
-                        println("API DEBUG: $responseBody")
                         try {
                             val stopInfo = json.decodeFromString<StopInfoResponse>(responseBody)
                             val stops = stopInfo.locations
@@ -204,6 +206,126 @@ class NSWBusService (context: Context) {
                 } catch (e: Exception) {
                     errorCallback("Error: ${e.message}")
                 }
+            }
+        })
+    }
+
+
+    /**
+     * @param selectedStopId Optional: Can still be passed but current logic prioritizes Trackwork
+     */
+    fun getTravelAlerts(
+        selectedStopId: String? = null,
+        callback: (List<TravelAlert>) -> Unit,
+        errorCallback: (String) -> Unit
+    ) {
+        val sdf = java.text.SimpleDateFormat("dd-MM-yyyy", java.util.Locale.US)
+        val currentDate = sdf.format(java.util.Date())
+
+        val urlBuilder = "https://api.transport.nsw.gov.au/v1/tp/add_info".toHttpUrlOrNull()?.newBuilder()
+            ?.addQueryParameter("outputFormat", "rapidJSON")
+            ?.addQueryParameter("version", "10.2.1.42")
+            ?.addQueryParameter("filterPublicationStatus", "current")
+            ?.addQueryParameter("filterDateValid", currentDate)
+            ?.addQueryParameter("filterMOTType", "1")  // Train
+            ?.addQueryParameter("filterMOTType", "2")  // Metro
+            ?.addQueryParameter("filterMOTType", "5")  // Ferry (often has major disruptions)
+
+        val url = urlBuilder?.build()?.toString() ?: return
+
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "apikey $apiKey")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                errorCallback("Network error: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    errorCallback("API Error: ${response.code}")
+                    return
+                }
+
+                val responseBody = response.body?.string() ?: ""
+                val alertResponse = try {
+                    json.decodeFromString<AlertResponse>(responseBody)
+                } catch (e: Exception) {
+                    android.util.Log.e("NSWBusService", "JSON Parse Error: ${e.message}")
+                    return
+                }
+
+                val nowMillis = System.currentTimeMillis()
+                val sevenDaysFromNow = nowMillis + (7 * 24 * 60 * 60 * 1000L)
+                val isoSdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }
+
+                // --- HIGH-SIGNAL KEYWORDS: alert must contain at least one ---
+                val highSignalKeywords = listOf(
+                    "trackwork", "public holiday", "special event", "major disruption",
+                    "sydney trains", "metro", "t1 ", "t2 ", "t3 ", "t4 ", "t5 ", "t6 ", "t7 ",
+                    "intercity", "newcastle", "central coast", "blue mountains", "airport line",
+                    "new year", "christmas", "easter", "anzac"
+                )
+
+                // --- NOISE KEYWORDS: if title/content matches any of these, skip ---
+                val noiseKeywords = listOf(
+                    "bus stop relocation", "bus stop moved", "kerb", "footpath",
+                    "road works", "parking", "street closure", "lane closure",
+                    "temporary stop", "stop has moved", "relocated stop",
+                    "until further notice",  // too vague, usually minor infrastructure
+                    "project completion", "until 2027", "until 2028", "until 2029"
+                )
+
+                val filtered = alertResponse.infos?.current?.mapNotNull { info ->
+                    val title = info.subtitle ?: return@mapNotNull null
+                    val content = info.content ?: ""
+                    val priority = info.priority?.lowercase() ?: "normal"
+                    val fullText = "$title $content"
+
+                    // 1. PRIORITY GATE — only keep high/very_high, or anything explicitly "trackwork"
+                    val isHighPriority = priority in listOf("high", "very_high", "veryhigh")
+                    val isTrackwork = title.contains("trackwork", ignoreCase = true)
+                    if (!isHighPriority && !isTrackwork) return@mapNotNull null
+
+                    // 2. NOISE FILTER — drop anything matching noise patterns
+                    if (noiseKeywords.any { fullText.contains(it, ignoreCase = true) }) {
+                        return@mapNotNull null
+                    }
+
+                    // 3. SIGNAL FILTER — must match at least one high-signal keyword
+                    val hasSignal = highSignalKeywords.any { fullText.contains(it, ignoreCase = true) }
+                    if (!hasSignal) return@mapNotNull null
+
+                    // 4. DATE FILTER — skip if starts more than 7 days away
+                    val fromDateStr = info.timestamps?.availability?.from
+                    if (fromDateStr != null) {
+                        try {
+                            val eventStart = isoSdf.parse(fromDateStr)?.time ?: 0L
+                            if (eventStart > sevenDaysFromNow) return@mapNotNull null
+                        } catch (e: Exception) { /* keep if unparseable and high priority */ }
+                    }
+
+                    // 5. CLEANUP HTML
+                    val cleanContent = content
+                        .replace(Regex("<[^>]*>"), "")
+                        .replace("&nbsp;", " ")
+                        .replace(Regex("\\s{2,}"), " ")
+                        .trim()
+
+                    TravelAlert(title, cleanContent, priority)
+                }
+                    ?.distinctBy { it.title }
+                    ?.sortedWith(compareByDescending<TravelAlert> {
+                        it.priority in listOf("very_high", "veryhigh", "high")
+                    }.thenBy { it.title })
+                    ?: emptyList()
+
+                android.util.Log.d("NSWBusService", "Final Alert Count: ${filtered.size}")
+                callback(filtered)
             }
         })
     }
