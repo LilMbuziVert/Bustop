@@ -188,12 +188,14 @@ class NSWBusService (context: Context) {
                                 ?.mapNotNull { assignedStop ->
                                     // The actual stop ID is inside the 'properties' object
                                     val internalId = assignedStop.properties?.stopId ?: return@mapNotNull null
+                                    val distance = assignedStop.distance
                                     val globalId = assignedStop.id?.replace("G", "") ?: "" // "G2287141" -> "2287141"
                                     val name = assignedStop.name ?: assignedStop.disassembledName ?: "Stop $internalId"
                                     BusStop(
                                         id = internalId,
                                         signId = globalId,
-                                        name = name
+                                        name = name,
+                                        distance = distance
                                     )
                                 }?.take(6) ?: emptyList() // Take the first 6 stops
                             callback(stops)

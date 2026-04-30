@@ -35,6 +35,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.heuge.busapp.R
 import com.heuge.busapp.data.api.NSWBusService
+import com.heuge.busapp.data.local.NearestStopsManager
 import com.heuge.busapp.data.local.RecentStopsManager
 import com.heuge.busapp.data.model.BusArrival
 import com.heuge.busapp.data.model.BusStop
@@ -73,17 +74,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recentStopsManager: RecentStopsManager
     private lateinit var recentStopsAdapter: RecentStopsAdapter
 
+    private lateinit var nearestStopsManager: NearestStopsManager
+
     private lateinit var indicatorContainer: LinearLayout
     private val indicators = mutableListOf<View>()
 
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
 
     private var currentStopId: String? = null
-    // Stores all buses available at the current stop
-    private var availableBusNumbers: List<String> = emptyList()
 
-    // Stores all arrivals so we can filter without losing data
-    private var allArrivals: List<BusArrival> = emptyList()
+    private var availableBusNumbers: List<String> = emptyList() // Stores all buses available at the current stop
+
+
+    private var allArrivals: List<BusArrival> = emptyList() // Stores all arrivals so we can filter without losing data
 
     private var isNearestStopsExpanded = false
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -137,6 +140,7 @@ class MainActivity : AppCompatActivity() {
 
         busService = NSWBusService(this)
 
+        nearestStopsManager = NearestStopsManager()
         recentStopsManager = RecentStopsManager(this)
         setupRecentStopsRecyclerView()
         setupBusNumberRecyclerView()
@@ -451,19 +455,13 @@ class MainActivity : AppCompatActivity() {
             recentStopsButton.compoundDrawablePadding = 0
 
             val currentTime = System.currentTimeMillis()
-            if(cachedNearbyStops.isEmpty() || (currentTime - lastNearbyFetchTime) > CACHE_EXPIRATION_MS) {
+            if(!nearestStopsManager.isCacheValid()) {
                 // Old data / No data, get new data from GPS
                 checkLocationPermissionAndFetch()
             }
             else{
                 // Data is fresh -> Just update the UI from memory
-                recentStopsShimmer.stopShimmer()
-                recentStopsShimmer.visibility = View.GONE
-                recentStopsRecyclerView.visibility = View.VISIBLE
-                
-                recentStopsAdapter.updateStops(cachedNearbyStops)
-                val groupCount = (cachedNearbyStops.size + 2) / 3
-                setupCarouselIndicator(groupCount)
+                updateNearbyStopsUI(nearestStopsManager.getCachedStops())
             }
 
         } else {
@@ -497,10 +495,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingPermission")
     private fun fetchNearbyStops() {
         // Show Shimmer while fetching
-        recentStopsRecyclerView.visibility = View.GONE
-        indicatorContainer.visibility = View.GONE
-        recentStopsShimmer.visibility = View.VISIBLE
-        recentStopsShimmer.startShimmer()
+        showShimmer()
 
         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
             .addOnSuccessListener { location ->
@@ -508,33 +503,18 @@ class MainActivity : AppCompatActivity() {
                     busService.getNearbyStops(location.latitude, location.longitude,
                         callback = { stops ->
 
-                            //Save to cache
-                            cachedNearbyStops = stops
-                            lastNearbyFetchTime = System.currentTimeMillis()
-
-                            runOnUiThread {
-                                recentStopsShimmer.stopShimmer()
-                                recentStopsShimmer.visibility = View.GONE
-                                recentStopsRecyclerView.visibility = View.VISIBLE
-                                
-                                recentStopsAdapter.updateStops(stops)
-                                val groupCount = (stops.size + 2) / 3
-                                setupCarouselIndicator(groupCount)
-                            }
+                            nearestStopsManager.updateStops(stops)
+                            runOnUiThread { updateNearbyStopsUI(stops) }
                         },
                         errorCallback = { error ->
                             runOnUiThread { 
-                                recentStopsShimmer.stopShimmer()
-                                recentStopsShimmer.visibility = View.GONE
-                                recentStopsRecyclerView.visibility = View.VISIBLE
+                                hideShimmer()
                                 Toast.makeText(this, error, Toast.LENGTH_SHORT).show() 
                             }
                         }
                     )
                 } else {
-                    recentStopsShimmer.stopShimmer()
-                    recentStopsShimmer.visibility = View.GONE
-                    recentStopsRecyclerView.visibility = View.VISIBLE
+                    hideShimmer()
                     Toast.makeText(this, "Could not get location", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -787,6 +767,26 @@ class MainActivity : AppCompatActivity() {
                 showNoData()
             }
         }
+    }
+
+    private fun showShimmer() {
+        recentStopsRecyclerView.visibility = View.GONE
+        indicatorContainer.visibility = View.GONE
+        recentStopsShimmer.visibility = View.VISIBLE
+        recentStopsShimmer.startShimmer()
+    }
+
+    private fun hideShimmer() {
+        recentStopsShimmer.stopShimmer()
+        recentStopsShimmer.visibility = View.GONE
+        recentStopsRecyclerView.visibility = View.VISIBLE
+    }
+
+    private fun updateNearbyStopsUI(stops: List<BusStop>) {
+        hideShimmer()
+        recentStopsAdapter.updateStops(stops)
+        val groupCount = (stops.size + 2) / 3
+        setupCarouselIndicator(groupCount)
     }
 
 }
