@@ -6,6 +6,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.*
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 
 @Serializable
 data class StopEvent(
@@ -35,34 +36,45 @@ data class BusArrival(
     val destination: String,
     val scheduledTime: String,
     val realTimeTime: String,
-    val delayMinutes: Long
+    val delayMinutes: Long,
+    var isPast: Boolean = false
 ) {
     val delayStatus: String
-        get() = when{
+        get() = if (isPast) "" else when {
             delayMinutes > 0 -> "Late $delayMinutes min"
             delayMinutes < 0 -> "Early ${-delayMinutes} min"
             else -> "On time"
         }
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun getFormattedTime(): String {
         return try {
             //Parse as UTC then convert to Sydney time
-            val utcTime = if (realTimeTime.contains("+") || realTimeTime.contains("Z")) {
-                Instant.parse(realTimeTime)
-            } else {
-                Instant.parse("${realTimeTime}Z")
+            val utcTime = try {
+                OffsetDateTime.parse(realTimeTime).toInstant()
+            } catch (_: Exception) {
+                if (realTimeTime.contains("Z")) {
+                    Instant.parse(realTimeTime)
+                } else {
+                    Instant.parse("${realTimeTime}Z")
+                }
             }
 
             val sydneyTime = utcTime.atZone(ZoneId.of("Australia/Sydney"))
             val now = ZonedDateTime.now(ZoneId.of("Australia/Sydney"))
 
-            val minutesUntil = Duration.between(now, sydneyTime).toMinutes()
+            val minutesDifference = Duration.between(now, sydneyTime).toMinutes()
 
-            when{
-                minutesUntil <=0 -> "Now"
-                minutesUntil == 1L -> "1 min"
-                minutesUntil < 60 -> "$minutesUntil mins"
-                else -> sydneyTime.format(DateTimeFormatter.ofPattern("HH:min"))
+            if (isPast) {
+                val absMinutes = abs(minutesDifference)
+                if (absMinutes == 0L) "Now" else "$absMinutes mins ago"
+            } else {
+                when {
+                    minutesDifference <= 0 -> "Now"
+                    minutesDifference == 1L -> "1 min"
+                    minutesDifference < 60 -> "$minutesDifference mins"
+                    else -> sydneyTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+                }
             }
 
 

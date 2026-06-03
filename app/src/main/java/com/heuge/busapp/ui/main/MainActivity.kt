@@ -1,6 +1,7 @@
 package com.heuge.busapp.ui.main
 
 import android.Manifest
+import android.location.Location
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
@@ -16,6 +17,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -44,6 +46,8 @@ import com.heuge.busapp.ui.adapter.BusArrivalAdapter
 import com.heuge.busapp.ui.adapter.BusNumberAdapter
 import com.heuge.busapp.ui.adapter.RecentStopsAdapter
 import kotlinx.coroutines.launch
+import java.time.*
+import java.time.format.DateTimeFormatter
 
 class MainActivity : AppCompatActivity() {
     private lateinit var stopIdEditText: EditText
@@ -90,10 +94,6 @@ class MainActivity : AppCompatActivity() {
 
     private var isNearestStopsExpanded = false
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-
-    private var cachedNearbyStops: List<BusStop> = emptyList()
-    private var lastNearbyFetchTime: Long = 0
-    private val CACHE_EXPIRATION_MS = 2 * 60 * 1000 // 2 minutes
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -317,7 +317,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = BusArrivalAdapter(emptyList())
+        adapter = BusArrivalAdapter(emptyList()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                loadEarlierArrivals()
+            }
+        }
         busArrivalRecyclerView.layoutManager = LinearLayoutManager(this)
         busArrivalRecyclerView.adapter = adapter
 
@@ -446,7 +450,7 @@ class MainActivity : AppCompatActivity() {
             // Expand Nearest, Shrink Recent
             nearestStopsButton.isSelected = true
             recentStopsButton.isSelected = false
-            
+
             nearestStopsButton.text = getString(R.string.nearest_stops)
             nearestStopsButton.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.my_location_24px, 0, 0, 0)
             nearestStopsButton.compoundDrawablePadding = dpToPx(8)
@@ -454,12 +458,10 @@ class MainActivity : AppCompatActivity() {
             recentStopsButton.text = ""
             recentStopsButton.compoundDrawablePadding = 0
 
-            val currentTime = System.currentTimeMillis()
-            if(!nearestStopsManager.isCacheValid()) {
+            if (!nearestStopsManager.isCacheValid()) {
                 // Old data / No data, get new data from GPS
                 checkLocationPermissionAndFetch()
-            }
-            else{
+            } else {
                 // Data is fresh -> Just update the UI from memory
                 updateNearbyStopsUI(nearestStopsManager.getCachedStops())
             }
@@ -569,7 +571,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleAlertsSection() {
-        if (alertsSection.visibility == View.VISIBLE) {
+        if (alertsSection.isVisible) {
             eInkFadeOut(alertsSection)
             alertsButton.isSelected = false
         } else {
@@ -579,8 +581,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun fetchTravelAlerts() {
+        val hasLocationPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+        if (hasLocationPermission) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                fetchTravelAlertsWithLocation(location)
+            }.addOnFailureListener {
+                fetchTravelAlertsWithLocation(null)
+            }
+        } else {
+            fetchTravelAlertsWithLocation(null)
+        }
+    }
+
+    private fun fetchTravelAlertsWithLocation(location: Location?) {
         busService.getTravelAlerts(
+            userLocation = location,
             callback = { alerts ->
                 runOnUiThread {
                     if (alerts.isEmpty()) {
@@ -604,6 +623,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun searchBusArrivals(stopId: String, signId: String? = null) {
         currentStopId = stopId
+        allArrivals = emptyList() // Clear previous results
         showLoading()
 
         busService.getStopInfo(
@@ -630,26 +650,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getBusArrivalsWithStopName(stopId: String, stopName: String?) {
-        lifecycleScope.launch {
-            busService.getBusArrivals(
-                stopId = stopId,
-                callback = { arrivals ->
-                    runOnUiThread {
-                        hideLoading()
-                        if (arrivals.isNotEmpty()) {
-                            showResults(arrivals)
-                        } else {
-                            showNoData()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            lifecycleScope.launch {
+                busService.getBusArrivals(
+                    stopId = stopId,
+                    callback = { arrivals ->
+                        runOnUiThread {
+                            hideLoading()
+                            if (arrivals.isNotEmpty()) {
+                                showResults(arrivals)
+                            } else {
+                                showNoData()
+                            }
+                        }
+                    },
+                    errorCallback = { error ->
+                        runOnUiThread {
+                            hideLoading()
+                            showError(error)
                         }
                     }
-                },
-                errorCallback = { error ->
-                    runOnUiThread {
-                        hideLoading()
-                        showError(error)
-                    }
-                }
-            )
+                )
+            }
+        } else {
+            hideLoading()
+            showError("Android 8.0 or higher is required for arrival data")
         }
     }
 
@@ -663,35 +688,38 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshBusArrivals(stopId: String) {
-
-        lifecycleScope.launch {
-            busService.getBusArrivals(
-                stopId = stopId,
-                callback = { arrivals ->
-                    runOnUiThread {
-                        swipeRefreshLayout.isRefreshing = false
-                        if (arrivals.isNotEmpty()) {
-                            showResults(arrivals)
-                        } else {
-                            showNoData()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            lifecycleScope.launch {
+                busService.getBusArrivals(
+                    stopId = stopId,
+                    callback = { arrivals ->
+                        runOnUiThread {
+                            swipeRefreshLayout.isRefreshing = false
+                            if (arrivals.isNotEmpty()) {
+                                showResults(arrivals)
+                            } else {
+                                showNoData()
+                            }
+                        }
+                    },
+                    errorCallback = { error ->
+                        runOnUiThread {
+                            swipeRefreshLayout.isRefreshing = false
+                            showError(error)
                         }
                     }
-                },
-                errorCallback = { error ->
-                    runOnUiThread {
-                        swipeRefreshLayout.isRefreshing = false
-                        showError(error)
-                    }
-                }
-            )
+                )
+            }
+        } else {
+            swipeRefreshLayout.isRefreshing = false
+            showError("Android 8.0 or higher is required for arrival data")
         }
     }
 
     private fun updateScrollFlags(canScroll: Boolean) {
         val params = carouselContainer.layoutParams as com.google.android.material.appbar.AppBarLayout.LayoutParams
         if (canScroll) {
-            params.scrollFlags = com.google.android.material.appbar.AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL or
-                    com.google.android.material.appbar.AppBarLayout.LayoutParams.SCROLL_FLAG_ENTER_ALWAYS
+            params.scrollFlags = com.google.android.material.appbar.AppBarLayout.LayoutParams.SCROLL_FLAG_SCROLL
         } else {
             params.scrollFlags = 0
             // Force it to expand and stay expanded instantly
@@ -729,6 +757,27 @@ class MainActivity : AppCompatActivity() {
 
     private fun showResults(arrivals: List<BusArrival>) {
         updateScrollFlags(true)
+
+        // Mark past arrivals
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val now = ZonedDateTime.now(ZoneId.of("Australia/Sydney"))
+            arrivals.forEach { arrival ->
+                try {
+                    val utcTime = try {
+                        OffsetDateTime.parse(arrival.realTimeTime).toInstant()
+                    } catch (_: Exception) {
+                        if (arrival.realTimeTime.contains("Z")) {
+                            Instant.parse(arrival.realTimeTime)
+                        } else {
+                            Instant.parse("${arrival.realTimeTime}Z")
+                        }
+                    }
+                    val sydneyTime = utcTime.atZone(ZoneId.of("Australia/Sydney"))
+                    arrival.isPast = sydneyTime.isBefore(now)
+                } catch (_: Exception) {}
+            }
+        }
+
         allArrivals = arrivals
         adapter.updateArrivals(arrivals)
 
@@ -739,6 +788,54 @@ class MainActivity : AppCompatActivity() {
         eInkFadeOut(errorTextView)
         eInkFadeOut(noDataTextView)
 
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun loadEarlierArrivals() {
+        val stopId = currentStopId ?: return
+
+        // Find the earliest time in our current list
+        val firstArrival = allArrivals.minByOrNull { it.realTimeTime }
+        val referenceTime = try {
+            if (firstArrival != null) {
+                val utcTime = try {
+                    OffsetDateTime.parse(firstArrival.realTimeTime).toInstant()
+                } catch (_: Exception) {
+                    if (firstArrival.realTimeTime.contains("Z")) {
+                        Instant.parse(firstArrival.realTimeTime)
+                    } else {
+                        Instant.parse("${firstArrival.realTimeTime}Z")
+                    }
+                }
+                // Always convert to Sydney time so that .format("HHmm") gives the local time the API expects
+                utcTime.atZone(ZoneId.of("Australia/Sydney")).toOffsetDateTime()
+            } else {
+                OffsetDateTime.now(ZoneId.of("Australia/Sydney"))
+            }
+        } catch (_: Exception) {
+            OffsetDateTime.now(ZoneId.of("Australia/Sydney"))
+        }
+
+        val fetchTime = referenceTime.minusMinutes(45)
+
+        busService.getBusArrivals(
+            stopId = stopId,
+            dateTime = fetchTime,
+            callback = { newArrivals ->
+                runOnUiThread {
+                    val combined = (newArrivals + allArrivals)
+                        .distinctBy { it.realTimeTime + it.routeName + it.destination }
+                        .sortedBy { it.realTimeTime }
+
+                    showResults(combined)
+                }
+            },
+            errorCallback = { error ->
+                runOnUiThread {
+                    Toast.makeText(this, "Error loading earlier: $error", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
     }
 
     private fun showError(message: String) {

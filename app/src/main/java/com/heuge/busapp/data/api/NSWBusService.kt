@@ -1,6 +1,7 @@
 package com.heuge.busapp.data.api
 
 import android.content.Context
+import android.location.Location
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.heuge.busapp.R
@@ -19,7 +20,7 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
-class NSWBusService (context: Context) {
+class NSWBusService (private val context: Context) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -33,12 +34,31 @@ class NSWBusService (context: Context) {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun getBusArrivals(
         stopId: String,
+        dateTime: OffsetDateTime? = null,
         callback: (List<BusArrival>) -> Unit,
         errorCallback: (String) -> Unit
     ) {
-        val url = "https://api.transport.nsw.gov.au/v1/tp/departure_mon?outputFormat=rapidJSON&coordOutputFormat=EPSG%3A4326&mode=direct&type_dm=stop&name_dm=$stopId&departureMonitorMacro=true&TfNSWDM=true&version=10.2.1.42"
+        val urlBuilder = "https://api.transport.nsw.gov.au/v1/tp/departure_mon".toHttpUrlOrNull()?.newBuilder()
+            ?.addQueryParameter("outputFormat", "rapidJSON")
+            ?.addQueryParameter("coordOutputFormat", "EPSG:4326")
+            ?.addQueryParameter("mode", "direct")
+            ?.addQueryParameter("type_dm", "stop")
+            ?.addQueryParameter("name_dm", stopId)
+            ?.addQueryParameter("departureMonitorMacro", "true")
+            ?.addQueryParameter("TfNSWDM", "true")
+            ?.addQueryParameter("version", "10.2.1.42")
+
+        if (dateTime != null) {
+            val dateStr = dateTime.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+            val timeStr = dateTime.format(DateTimeFormatter.ofPattern("HHmm"))
+            urlBuilder?.addQueryParameter("itdDate", dateStr)
+            urlBuilder?.addQueryParameter("itdTime", timeStr)
+        }
+
+        val url = urlBuilder?.build()?.toString() ?: return
 
         val request = Request.Builder()
             .url(url)
@@ -80,7 +100,7 @@ class NSWBusService (context: Context) {
                                         delayMinutes = delayMinutes
                                     )
                                 }
-                                ?.take(5) ?: emptyList()
+                                ?.take(10) ?: emptyList()
                             callback(arrivals)
                         } catch (e: Exception) {
                             errorCallback("Parsing error: ${e.message}")
@@ -218,6 +238,7 @@ class NSWBusService (context: Context) {
      */
     fun getTravelAlerts(
         selectedStopId: String? = null,
+        userLocation: Location? = null,
         callback: (List<TravelAlert>) -> Unit,
         errorCallback: (String) -> Unit
     ) {
@@ -278,7 +299,6 @@ class NSWBusService (context: Context) {
                     "bus stop relocation", "bus stop moved", "kerb", "footpath",
                     "road works", "parking", "street closure", "lane closure",
                     "temporary stop", "stop has moved", "relocated stop",
-                    "until further notice",  // too vague, usually minor infrastructure
                     "project completion", "until 2027", "until 2028", "until 2029"
                 )
 
@@ -288,10 +308,16 @@ class NSWBusService (context: Context) {
                     val priority = info.priority?.lowercase() ?: "normal"
                     val fullText = "$title $content"
 
-                    // 1. PRIORITY GATE — only keep high/very_high, or anything explicitly "trackwork"
+                    android.util.Log.d("NSWBusService", "RAW ALERT: title=$title | priority=$priority | fullText=$fullText")
+
+                    // LOCATION MATCH — check if alert mentions the user's suburb/area
+                    val userAreaKeywords = getUserAreaKeywords(userLocation) // e.g. ["newcastle", "broadmeadow"]
+                    val isLocalAlert = userAreaKeywords.any { fullText.contains(it, ignoreCase = true) }
+
+                    // 1. PRIORITY GATE — only keep high/very_high, or anything explicitly "trackwork" or local
                     val isHighPriority = priority in listOf("high", "very_high", "veryhigh")
-                    val isTrackwork = title.contains("trackwork", ignoreCase = true)
-                    if (!isHighPriority && !isTrackwork) return@mapNotNull null
+                    val isTrackwork = fullText.contains("trackwork", ignoreCase = true)
+                    if (!isHighPriority && !isTrackwork && !isLocalAlert) return@mapNotNull null
 
                     // 2. NOISE FILTER — drop anything matching noise patterns
                     if (noiseKeywords.any { fullText.contains(it, ignoreCase = true) }) {
@@ -330,5 +356,22 @@ class NSWBusService (context: Context) {
                 callback(filtered)
             }
         })
+    }
+
+    private fun getUserAreaKeywords(location: Location?): List<String> {
+        if (location == null) return emptyList()
+        return try {
+            val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
+            val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+            val keywords = mutableListOf<String>()
+            addresses?.firstOrNull()?.let { addr ->
+                addr.locality?.let { keywords.add(it) }
+                addr.subLocality?.let { keywords.add(it) }
+                addr.adminArea?.let { keywords.add(it) }
+            }
+            keywords
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 }
