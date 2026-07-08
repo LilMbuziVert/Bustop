@@ -5,22 +5,70 @@
     android:orientation="vertical"
     android:padding="12dp"
     android:layout_marginBottom="8dp"
-    android:background="@drawable/eink_card_background">
+    android:background="@android:color/transparent">
 
+    <!-- Label: IMPORTANT or TRACKWORK -->
+    <TextView
+        android:id="@+id/alertLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAllCaps="true"
+        android:textStyle="bold"
+        android:textSize="12sp"
+        android:textColor="?attr/appErrorColor"
+        android:text="IMPORTANT"
+        android:layout_marginBottom="6dp"/>
+
+    <!-- Date: 11-12 Jul -->
+    <TextView
+        android:id="@+id/alertDate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/EInkText.Large"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:text="11-12 Jul"
+        android:layout_marginBottom="6dp"/>
+
+    <!-- Title: Weekend trackwork -->
     <TextView
         android:id="@+id/alertTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textStyle="bold"
-        android:textSize="16sp"
-        android:textColor="?attr/appOnSurface" />
+        style="@style/EInkText.Large"
+        android:textSize="18sp"
+        android:text="Weekend trackwork"
+        android:layout_marginBottom="8dp"/>
 
+    <!-- Affected Lines -->
+    <TextView
+        android:id="@+id/affectedLines"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/EInkText.Medium"
+        android:textStyle="bold"
+        android:textColor="?attr/appOnBackground"
+        android:text="Affected Lines" />
+
+    <!-- Description (Hidden) -->
     <TextView
         android:id="@+id/alertContent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:textSize="14sp"
-        android:textColor="?attr/appOnSurface" />
+        android:visibility="gone" />
+
+    <!-- Link -->
+    <TextView
+        android:id="@+id/alertLink"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        style="@style/EInkText.Small"
+        android:textSize="13sp"
+        android:textColor="?attr/appOnBackground"
+        android:text="transportnsw.info/alerts"
+        android:autoLink="web"
+        android:linksClickable="true"
+        android:textStyle="italic" />
 
 </LinearLayout>

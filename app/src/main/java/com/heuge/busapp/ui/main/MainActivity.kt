@@ -1,7 +1,6 @@
 package com.heuge.busapp.ui.main
 
 import android.Manifest
-import android.location.Location
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
@@ -45,7 +44,9 @@ import com.heuge.busapp.data.model.TravelAlert
 import com.heuge.busapp.ui.adapter.BusArrivalAdapter
 import com.heuge.busapp.ui.adapter.BusNumberAdapter
 import com.heuge.busapp.ui.adapter.RecentStopsAdapter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.*
 import java.time.format.DateTimeFormatter
 
@@ -62,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recentStopsButton: TextView
     private lateinit var nearestStopsButton: TextView
     private lateinit var alertsButton: TextView
+    private lateinit var closeAlertsButton: ImageView
     private lateinit var recentStopsShimmer: ShimmerFrameLayout
 
     private lateinit var alertsSection: LinearLayout
@@ -312,6 +314,7 @@ class MainActivity : AppCompatActivity() {
         alertsSection = findViewById(R.id.alertsSection)
         alertsRecyclerView = findViewById(R.id.alertsRecyclerView)
         noAlertsText = findViewById(R.id.noAlertsText)
+        closeAlertsButton = findViewById(R.id.closeAlertsButton)
         carouselContainer = findViewById(R.id.carouselContainer)
         appBarLayout = findViewById(R.id.appBarLayout)
     }
@@ -539,6 +542,10 @@ class MainActivity : AppCompatActivity() {
             toggleAlertsSection()
         }
 
+        closeAlertsButton.setOnClickListener {
+            toggleAlertsSection()
+        }
+
         searchIcon.setOnClickListener {
             val stopId = stopIdEditText.text.toString().trim()
             if (stopId.isNotEmpty()) {
@@ -581,25 +588,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("MissingPermission")
     private fun fetchTravelAlerts() {
-        val hasLocationPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-        if (hasLocationPermission) {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                fetchTravelAlertsWithLocation(location)
-            }.addOnFailureListener {
-                fetchTravelAlertsWithLocation(null)
-            }
-        } else {
-            fetchTravelAlertsWithLocation(null)
-        }
-    }
-
-    private fun fetchTravelAlertsWithLocation(location: Location?) {
         busService.getTravelAlerts(
-            userLocation = location,
             callback = { alerts ->
                 runOnUiThread {
                     if (alerts.isEmpty()) {
@@ -758,36 +748,42 @@ class MainActivity : AppCompatActivity() {
     private fun showResults(arrivals: List<BusArrival>) {
         updateScrollFlags(true)
 
-        // Mark past arrivals
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val now = ZonedDateTime.now(ZoneId.of("Australia/Sydney"))
-            arrivals.forEach { arrival ->
-                try {
-                    val utcTime = try {
-                        OffsetDateTime.parse(arrival.realTimeTime).toInstant()
-                    } catch (_: Exception) {
-                        if (arrival.realTimeTime.contains("Z")) {
-                            Instant.parse(arrival.realTimeTime)
-                        } else {
-                            Instant.parse("${arrival.realTimeTime}Z")
+        lifecycleScope.launch(Dispatchers.Default) {
+            // Mark past arrivals on background thread
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val now = ZonedDateTime.now(ZoneId.of("Australia/Sydney"))
+                arrivals.forEach { arrival ->
+                    try {
+                        val utcTime = try {
+                            OffsetDateTime.parse(arrival.realTimeTime).toInstant()
+                        } catch (_: Exception) {
+                            if (arrival.realTimeTime.contains("Z")) {
+                                Instant.parse(arrival.realTimeTime)
+                            } else {
+                                Instant.parse("${arrival.realTimeTime}Z")
+                            }
                         }
+                        val sydneyTime = utcTime.atZone(ZoneId.of("Australia/Sydney"))
+                        arrival.isPast = sydneyTime.isBefore(now)
+                    } catch (_: Exception) {
                     }
-                    val sydneyTime = utcTime.atZone(ZoneId.of("Australia/Sydney"))
-                    arrival.isPast = sydneyTime.isBefore(now)
-                } catch (_: Exception) {}
+                }
+            }
+
+            val distinctBusNumbers = arrivals.map { it.routeName }.distinct()
+
+            withContext(Dispatchers.Main) {
+                allArrivals = arrivals
+                adapter.updateArrivals(arrivals)
+
+                availableBusNumbers = listOf("All") + distinctBusNumbers
+                updateBusNumbers()
+
+                eInkFadeIn(busArrivalRecyclerView)
+                eInkFadeOut(errorTextView)
+                eInkFadeOut(noDataTextView)
             }
         }
-
-        allArrivals = arrivals
-        adapter.updateArrivals(arrivals)
-
-        availableBusNumbers = listOf("All") + arrivals.map { it.routeName }.distinct()
-        updateBusNumbers()
-
-        eInkFadeIn(busArrivalRecyclerView)
-        eInkFadeOut(errorTextView)
-        eInkFadeOut(noDataTextView)
-
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -822,12 +818,14 @@ class MainActivity : AppCompatActivity() {
             stopId = stopId,
             dateTime = fetchTime,
             callback = { newArrivals ->
-                runOnUiThread {
+                lifecycleScope.launch(Dispatchers.Default) {
                     val combined = (newArrivals + allArrivals)
                         .distinctBy { it.realTimeTime + it.routeName + it.destination }
                         .sortedBy { it.realTimeTime }
 
-                    showResults(combined)
+                    withContext(Dispatchers.Main) {
+                        showResults(combined)
+                    }
                 }
             },
             errorCallback = { error ->

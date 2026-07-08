@@ -1,7 +1,6 @@
 package com.heuge.busapp.data.api
 
 import android.content.Context
-import android.location.Location
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.heuge.busapp.R
@@ -20,7 +19,7 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
-class NSWBusService (private val context: Context) {
+class NSWBusService (context: Context) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -234,11 +233,9 @@ class NSWBusService (private val context: Context) {
 
 
     /**
-     * @param selectedStopId Optional: Can still be passed but current logic prioritizes Trackwork
+     * Fetches travel alerts for Train and Metro.
      */
     fun getTravelAlerts(
-        selectedStopId: String? = null,
-        userLocation: Location? = null,
         callback: (List<TravelAlert>) -> Unit,
         errorCallback: (String) -> Unit
     ) {
@@ -252,7 +249,6 @@ class NSWBusService (private val context: Context) {
             ?.addQueryParameter("filterDateValid", currentDate)
             ?.addQueryParameter("filterMOTType", "1")  // Train
             ?.addQueryParameter("filterMOTType", "2")  // Metro
-            ?.addQueryParameter("filterMOTType", "5")  // Ferry (often has major disruptions)
 
         val url = urlBuilder?.build()?.toString() ?: return
 
@@ -280,19 +276,9 @@ class NSWBusService (private val context: Context) {
                     return
                 }
 
-                val nowMillis = System.currentTimeMillis()
-                val sevenDaysFromNow = nowMillis + (7 * 24 * 60 * 60 * 1000L)
                 val isoSdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
                     timeZone = java.util.TimeZone.getTimeZone("UTC")
                 }
-
-                // --- HIGH-SIGNAL KEYWORDS: alert must contain at least one ---
-                val highSignalKeywords = listOf(
-                    "trackwork", "public holiday", "special event", "major disruption",
-                    "sydney trains", "metro", "t1 ", "t2 ", "t3 ", "t4 ", "t5 ", "t6 ", "t7 ",
-                    "intercity", "newcastle", "central coast", "blue mountains", "airport line",
-                    "new year", "christmas", "easter", "anzac"
-                )
 
                 // --- NOISE KEYWORDS: if title/content matches any of these, skip ---
                 val noiseKeywords = listOf(
@@ -302,76 +288,89 @@ class NSWBusService (private val context: Context) {
                     "project completion", "until 2027", "until 2028", "until 2029"
                 )
 
-                val filtered = alertResponse.infos?.current?.mapNotNull { info ->
+                // Combine current and planned (if present in response)
+                val allAlerts = (alertResponse.infos?.current ?: emptyList()) + (alertResponse.infos?.planned ?: emptyList())
+
+                val filtered = allAlerts.mapNotNull { info ->
                     val title = info.subtitle ?: return@mapNotNull null
                     val content = info.content ?: ""
                     val priority = info.priority?.lowercase() ?: "normal"
                     val fullText = "$title $content"
 
-                    android.util.Log.d("NSWBusService", "RAW ALERT: title=$title | priority=$priority | fullText=$fullText")
-
-                    // LOCATION MATCH — check if alert mentions the user's suburb/area
-                    val userAreaKeywords = getUserAreaKeywords(userLocation) // e.g. ["newcastle", "broadmeadow"]
-                    val isLocalAlert = userAreaKeywords.any { fullText.contains(it, ignoreCase = true) }
-
-                    // 1. PRIORITY GATE — only keep high/very_high, or anything explicitly "trackwork" or local
-                    val isHighPriority = priority in listOf("high", "very_high", "veryhigh")
+                    // 1. GATE — strictly require "trackwork" OR high priority disruption
                     val isTrackwork = fullText.contains("trackwork", ignoreCase = true)
-                    if (!isHighPriority && !isTrackwork && !isLocalAlert) return@mapNotNull null
+                    val isHighPriority = priority in listOf("high", "very_high", "veryhigh")
+                    
+                    if (!isTrackwork && !isHighPriority) return@mapNotNull null
 
-                    // 2. NOISE FILTER — drop anything matching noise patterns
+                    // 2. NOISE FILTER
                     if (noiseKeywords.any { fullText.contains(it, ignoreCase = true) }) {
                         return@mapNotNull null
                     }
 
-                    // 3. SIGNAL FILTER — must match at least one high-signal keyword
-                    val hasSignal = highSignalKeywords.any { fullText.contains(it, ignoreCase = true) }
-                    if (!hasSignal) return@mapNotNull null
+                    // 3. DATE EXTRACTION
+                    // Use validity if available, otherwise availability
+                    val validity = info.timestamps?.validity?.firstOrNull()
+                    val fromDateStr = validity?.from ?: info.timestamps?.availability?.from
+                    val toDateStr = validity?.to ?: info.timestamps?.availability?.to
+                    
+                    // Format date range for display (e.g., "11-12 Jul")
+                    val displayDateRange = try {
+                        if (fromDateStr != null && toDateStr != null) {
+                            val fromDate = isoSdf.parse(fromDateStr)
+                            val toDate = isoSdf.parse(toDateStr)
+                            
+                            if (fromDate != null && toDate != null) {
+                                val dayFrom = java.text.SimpleDateFormat("d", java.util.Locale.US).format(fromDate)
+                                val dayTo = java.text.SimpleDateFormat("d", java.util.Locale.US).format(toDate)
+                                val monthFrom = java.text.SimpleDateFormat("MMM", java.util.Locale.US).format(fromDate)
+                                val monthTo = java.text.SimpleDateFormat("MMM", java.util.Locale.US).format(toDate)
+                                
+                                if (monthFrom == monthTo) {
+                                    "$dayFrom-$dayTo $monthFrom"
+                                } else {
+                                    "$dayFrom $monthFrom - $dayTo $monthTo"
+                                }
+                            } else null
+                        } else null
+                    } catch (_: Exception) { null }
 
-                    // 4. DATE FILTER — skip if starts more than 7 days away
-                    val fromDateStr = info.timestamps?.availability?.from
-                    if (fromDateStr != null) {
-                        try {
-                            val eventStart = isoSdf.parse(fromDateStr)?.time ?: 0L
-                            if (eventStart > sevenDaysFromNow) return@mapNotNull null
-                        } catch (e: Exception) { /* keep if unparseable and high priority */ }
-                    }
+                    // Extract affected lines
+                    val affectedLinesList = info.affected?.lines?.mapNotNull { it.name }?.distinct()
+                    val affectedLinesString = affectedLinesList?.joinToString(", ")
 
-                    // 5. CLEANUP HTML
+                    // 4. CLEANUP HTML
                     val cleanContent = content
+                        .replace("<br>", "\n")
+                        .replace("<br/>", "\n")
+                        .replace("</p>", "\n\n")
                         .replace(Regex("<[^>]*>"), "")
                         .replace("&nbsp;", " ")
-                        .replace(Regex("\\s{2,}"), " ")
+                        .replace("&amp;", "&")
+                        .replace(Regex("[ ]{2,}"), " ")
                         .trim()
+                        .replace(Regex("\n{3,}\n"), "\n\n")
 
-                    TravelAlert(title, cleanContent, priority)
-                }
-                    ?.distinctBy { it.title }
-                    ?.sortedWith(compareByDescending<TravelAlert> {
-                        it.priority in listOf("very_high", "veryhigh", "high")
-                    }.thenBy { it.title })
-                    ?: emptyList()
+                    // Label: IMPORTANT or TRACKWORK
+                    val label = if (isTrackwork) "TRACKWORK" else "IMPORTANT"
+
+                    TravelAlert(
+                        title = title,
+                        content = cleanContent,
+                        priority = label,
+                        affectedLines = affectedLinesString,
+                        dateRange = displayDateRange
+                    )
+                }.distinctBy { it.title }
+                    .sortedWith(compareByDescending<TravelAlert> {
+                        it.priority == "TRACKWORK"
+                    }.thenByDescending {
+                        it.priority == "IMPORTANT"
+                    })
 
                 android.util.Log.d("NSWBusService", "Final Alert Count: ${filtered.size}")
                 callback(filtered)
             }
         })
-    }
-
-    private fun getUserAreaKeywords(location: Location?): List<String> {
-        if (location == null) return emptyList()
-        return try {
-            val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
-            val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
-            val keywords = mutableListOf<String>()
-            addresses?.firstOrNull()?.let { addr ->
-                addr.locality?.let { keywords.add(it) }
-                addr.subLocality?.let { keywords.add(it) }
-                addr.adminArea?.let { keywords.add(it) }
-            }
-            keywords
-        } catch (e: Exception) {
-            emptyList()
-        }
     }
 }

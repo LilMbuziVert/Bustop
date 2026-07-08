@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.annotation.RequiresApi
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.heuge.busapp.R
 import com.heuge.busapp.data.model.BusArrival
@@ -99,7 +100,47 @@ class BusArrivalAdapter(
     }
 
     fun updateArrivals(newArrivals: List<BusArrival>) {
-        arrivals = newArrivals
-        notifyDataSetChanged()
+        val diffCallback = BusArrivalDiffCallback(this.arrivals, newArrivals)
+        val diffResult = DiffUtil.calculateDiff(diffCallback)
+
+        this.arrivals = newArrivals
+        // We use dispatchUpdatesTo(this) which handles the offsets automatically for the header
+        diffResult.dispatchUpdatesTo(object : androidx.recyclerview.widget.ListUpdateCallback {
+            override fun onInserted(position: Int, count: Int) {
+                notifyItemRangeInserted(position + 1, count)
+            }
+
+            override fun onRemoved(position: Int, count: Int) {
+                notifyItemRangeRemoved(position + 1, count)
+            }
+
+            override fun onMoved(fromPosition: Int, toPosition: Int) {
+                notifyItemMoved(fromPosition + 1, toPosition + 1)
+            }
+
+            override fun onChanged(position: Int, count: Int, payload: Any?) {
+                notifyItemRangeChanged(position + 1, count, payload)
+            }
+        })
+    }
+
+    private class BusArrivalDiffCallback(
+        private val oldList: List<BusArrival>,
+        private val newList: List<BusArrival>
+    ) : DiffUtil.Callback() {
+        override fun getOldListSize(): Int = oldList.size
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            val oldItem = oldList[oldItemPosition]
+            val newItem = newList[newItemPosition]
+            return oldItem.realTimeTime == newItem.realTimeTime && 
+                   oldItem.routeName == newItem.routeName &&
+                   oldItem.destination == newItem.destination
+        }
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+            return oldList[oldItemPosition] == newList[newItemPosition]
+        }
     }
 }

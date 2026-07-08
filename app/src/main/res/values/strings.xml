@@ -12,4 +12,5 @@
     <string name="travel_alerts">Travel Alerts</string>
     <string name="no_alerts">NO ALERTS :)</string>
     <string name="load_earlier_arrivals">Load earlier arrivals</string>
+    <string name="dismiss_alerts">Dismiss alerts</string>
 </resources>

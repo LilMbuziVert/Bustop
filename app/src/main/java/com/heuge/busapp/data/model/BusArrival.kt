@@ -131,7 +131,8 @@ data class AlertResponse(
 
 @Serializable
 data class AlertInfoContainer(
-    @SerialName("current") val current: List<AlertInfo>? = null
+    @SerialName("current") val current: List<AlertInfo>? = null,
+    @SerialName("planned") val planned: List<AlertInfo>? = null
 )
 
 @Serializable
@@ -145,7 +146,8 @@ data class AlertInfo(
 
 @Serializable
 data class AlertTimestamps(
-    @SerialName("availability") val availability: Availability? = null
+    @SerialName("availability") val availability: Availability? = null,
+    @SerialName("validity") val validity: List<Availability>? = null
 )
 @Serializable
 data class Availability(
@@ -172,7 +174,10 @@ data class AffectedLine(
 data class TravelAlert(
     val title: String,
     val content: String,
-    val priority: String? = null
+    val priority: String? = null,
+    val affectedLines: String? = null,
+    val dateRange: String? = null,
+    val url: String = "https://transportnsw.info/alerts"
 )
 
 data class BusStopGroup(
