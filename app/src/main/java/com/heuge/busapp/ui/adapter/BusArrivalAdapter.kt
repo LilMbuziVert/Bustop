@@ -100,6 +100,21 @@ class BusArrivalAdapter(
     }
 
     fun updateArrivals(newArrivals: List<BusArrival>) {
+        val wasEmpty = this.arrivals.isEmpty()
+        val isNowEmpty = newArrivals.isEmpty()
+
+        if (wasEmpty && !isNowEmpty) {
+            this.arrivals = newArrivals
+            notifyItemRangeInserted(0, newArrivals.size + 1)
+            return
+        }
+        if (!wasEmpty && isNowEmpty) {
+            val oldSize = this.arrivals.size
+            this.arrivals = newArrivals
+            notifyItemRangeRemoved(0, oldSize + 1)
+            return
+        }
+
         val diffCallback = BusArrivalDiffCallback(this.arrivals, newArrivals)
         val diffResult = DiffUtil.calculateDiff(diffCallback)
 

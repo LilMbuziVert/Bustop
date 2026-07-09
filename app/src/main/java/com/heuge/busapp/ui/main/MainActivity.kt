@@ -153,6 +153,17 @@ class MainActivity : AppCompatActivity() {
         // Initial button states
         recentStopsButton.isSelected = true
         nearestStopsButton.isSelected = false
+
+        // Close alerts when scrolling down to content
+        appBarLayout.addOnOffsetChangedListener(object : com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener {
+            private var lastOffset = 0
+            override fun onOffsetChanged(appBarLayout: com.google.android.material.appbar.AppBarLayout, verticalOffset: Int) {
+                if (verticalOffset < lastOffset && alertsButton.isSelected) {
+                    toggleAlertsSection()
+                }
+                lastOffset = verticalOffset
+            }
+        })
     }
 
 
@@ -323,6 +334,8 @@ class MainActivity : AppCompatActivity() {
         adapter = BusArrivalAdapter(emptyList()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 loadEarlierArrivals()
+            } else {
+                Toast.makeText(this, "Earlier arrivals not supported on this Android version", Toast.LENGTH_SHORT).show()
             }
         }
         busArrivalRecyclerView.layoutManager = LinearLayoutManager(this)
@@ -764,7 +777,8 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                         val sydneyTime = utcTime.atZone(ZoneId.of("Australia/Sydney"))
-                        arrival.isPast = sydneyTime.isBefore(now)
+                        // Subtract a small buffer (e.g. 1 min) if you want "Now" arrivals to stay active slightly longer
+                        arrival.isPast = sydneyTime.isBefore(now.minusSeconds(30))
                     } catch (_: Exception) {
                     }
                 }
@@ -789,8 +803,8 @@ class MainActivity : AppCompatActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun loadEarlierArrivals() {
         val stopId = currentStopId ?: return
-
-        // Find the earliest time in our current list
+        
+        // Use the current earliest arrival as our reference point
         val firstArrival = allArrivals.minByOrNull { it.realTimeTime }
         val referenceTime = try {
             if (firstArrival != null) {
@@ -803,7 +817,6 @@ class MainActivity : AppCompatActivity() {
                         Instant.parse("${firstArrival.realTimeTime}Z")
                     }
                 }
-                // Always convert to Sydney time so that .format("HHmm") gives the local time the API expects
                 utcTime.atZone(ZoneId.of("Australia/Sydney")).toOffsetDateTime()
             } else {
                 OffsetDateTime.now(ZoneId.of("Australia/Sydney"))
@@ -812,25 +825,45 @@ class MainActivity : AppCompatActivity() {
             OffsetDateTime.now(ZoneId.of("Australia/Sydney"))
         }
 
-        val fetchTime = referenceTime.minusMinutes(45)
+        // We want arrivals BEFORE our current earliest arrival.
+        // We'll search starting from 2 hours prior to our earliest item.
+        val searchStartTime = referenceTime.minusHours(2)
+        val timeLabel = searchStartTime.format(DateTimeFormatter.ofPattern("HH:mm"))
+        Toast.makeText(this, "Searching from $timeLabel...", Toast.LENGTH_SHORT).show()
 
         busService.getBusArrivals(
             stopId = stopId,
-            dateTime = fetchTime,
-            callback = { newArrivals ->
+            dateTime = searchStartTime,
+            callback = { results ->
                 lifecycleScope.launch(Dispatchers.Default) {
-                    val combined = (newArrivals + allArrivals)
-                        .distinctBy { it.realTimeTime + it.routeName + it.destination }
-                        .sortedBy { it.realTimeTime }
+                    // 1. Filter results to only those that are BEFORE our reference time
+                    // 2. Sort by time descending so we get the most recent ones first
+                    // 3. Take the top 5 (which are the 5 closest to our current list)
+                    val earlierArrivals = results
+                        .filter { it.realTimeTime < (firstArrival?.realTimeTime ?: "") }
+                        .sortedByDescending { it.realTimeTime }
+                        .take(5)
+                        .reversed() // Reverse back to chronological order for the UI
 
                     withContext(Dispatchers.Main) {
-                        showResults(combined)
+                        if (earlierArrivals.isNotEmpty()) {
+                            val combined = (earlierArrivals + allArrivals)
+                                .distinctBy { it.realTimeTime + it.routeName + it.destination }
+                                .sortedBy { it.realTimeTime }
+                            
+                            showResults(combined)
+                            Toast.makeText(this@MainActivity, "Loaded ${earlierArrivals.size} earlier arrivals", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@MainActivity, "No earlier arrivals found in the last 2 hours", Toast.LENGTH_SHORT).show()
+                            hideLoading()
+                        }
                     }
                 }
             },
             errorCallback = { error ->
                 runOnUiThread {
-                    Toast.makeText(this, "Error loading earlier: $error", Toast.LENGTH_SHORT).show()
+                    hideLoading()
+                    Toast.makeText(this, "Error: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         )

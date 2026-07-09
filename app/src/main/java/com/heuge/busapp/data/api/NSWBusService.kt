@@ -46,15 +46,18 @@ class NSWBusService (context: Context) {
             ?.addQueryParameter("mode", "direct")
             ?.addQueryParameter("type_dm", "stop")
             ?.addQueryParameter("name_dm", stopId)
-            ?.addQueryParameter("departureMonitorMacro", "true")
-            ?.addQueryParameter("TfNSWDM", "true")
             ?.addQueryParameter("version", "10.2.1.42")
+            ?.addQueryParameter("itdTripDateTimeDepArr", "dep")
+            ?.addQueryParameter("limit", "100")
 
         if (dateTime != null) {
             val dateStr = dateTime.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
             val timeStr = dateTime.format(DateTimeFormatter.ofPattern("HHmm"))
             urlBuilder?.addQueryParameter("itdDate", dateStr)
             urlBuilder?.addQueryParameter("itdTime", timeStr)
+        } else {
+            urlBuilder?.addQueryParameter("departureMonitorMacro", "true")
+            urlBuilder?.addQueryParameter("TfNSWDM", "true")
         }
 
         val url = urlBuilder?.build()?.toString() ?: return
@@ -73,12 +76,16 @@ class NSWBusService (context: Context) {
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onResponse(call: Call, response: Response) {
                 try {
+                    val responseBody = response.body?.string() ?: ""
+                    android.util.Log.d("NSWBusService", "Response length: ${responseBody.length}")
+                    
                     if (response.isSuccessful) {
-                        val responseBody = response.body?.string() ?: ""
                         try {
                             val apiResponse = json.decodeFromString<ApiResponse>(responseBody)
-                            val arrivals = apiResponse.stopEvents
-                                ?.mapNotNull { event ->
+                            val rawEvents = apiResponse.stopEvents ?: emptyList()
+                            android.util.Log.d("NSWBusService", "Received ${rawEvents.size} stop events")
+                            
+                            val arrivals = rawEvents.mapNotNull { event ->
                                     val routeName = event.transportation?.number ?: return@mapNotNull null
                                     val destination = event.transportation.destination?.name ?: "Unknown"
                                     val scheduledTime = event.departureTimePlanned ?: return@mapNotNull null
@@ -99,8 +106,9 @@ class NSWBusService (context: Context) {
                                         delayMinutes = delayMinutes
                                     )
                                 }
-                                ?.take(10) ?: emptyList()
-                            callback(arrivals)
+                            
+                            val limitedArrivals = if (dateTime == null) arrivals.take(10) else arrivals
+                            callback(limitedArrivals)
                         } catch (e: Exception) {
                             errorCallback("Parsing error: ${e.message}")
                         }
