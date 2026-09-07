@@ -1,14 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/loadEarlierButton"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center"
-    android:padding="16dp"
-    android:text="@string/load_earlier_arrivals"
-    android:textAllCaps="true"
-    android:textStyle="bold"
-    style="@style/EInkText.Medium"
-    android:background="?attr/selectableItemBackground"
-    android:clickable="true"
-    android:focusable="true"/>
+    android:orientation="horizontal"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/loadEarlierButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="@string/load_earlier_arrivals"
+        android:textAllCaps="true"
+        android:textStyle="bold"
+        style="@style/EInkText.Medium"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"/>
+
+    <View
+        android:id="@+id/earlierArrivalsSeparator"
+        android:layout_width="1dp"
+        android:layout_height="24dp"
+        android:background="?attr/appOnBackground"
+        android:alpha="0.2"/>
+
+    <TextView
+        android:id="@+id/dismissEarlierButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.6"
+        android:gravity="center"
+        android:padding="16dp"
+        android:text="@string/dismiss_earlier_arrivals"
+        android:textAllCaps="true"
+        android:textStyle="bold"
+        style="@style/EInkText.Medium"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"/>
+</LinearLayout>

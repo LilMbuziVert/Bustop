@@ -93,6 +93,8 @@ class MainActivity : AppCompatActivity() {
 
 
     private var allArrivals: List<BusArrival> = emptyList() // Stores all arrivals so we can filter without losing data
+    private var originalArrivals: List<BusArrival> = emptyList() // Stores the original "now" arrivals
+    private var isShowingEarlierArrivals = false
 
     private var isNearestStopsExpanded = false
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -156,12 +158,14 @@ class MainActivity : AppCompatActivity() {
 
         // Close alerts when scrolling down to content
         appBarLayout.addOnOffsetChangedListener(object : com.google.android.material.appbar.AppBarLayout.OnOffsetChangedListener {
-            private var lastOffset = 0
             override fun onOffsetChanged(appBarLayout: com.google.android.material.appbar.AppBarLayout, verticalOffset: Int) {
-                if (verticalOffset < lastOffset && alertsButton.isSelected) {
-                    toggleAlertsSection()
+                // Only dismiss if the user has scrolled significantly and alerts are open
+                // We use a larger threshold and check if it's already hidden to avoid layout jumps
+                if (Math.abs(verticalOffset) > dpToPx(60) && alertsButton.isSelected && alertsSection.isVisible) {
+                    // Close alerts silently to avoid layout jumps during scroll
+                    alertsSection.visibility = View.GONE
+                    alertsButton.isSelected = false
                 }
-                lastOffset = verticalOffset
             }
         })
     }
@@ -331,13 +335,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        adapter = BusArrivalAdapter(emptyList()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                loadEarlierArrivals()
-            } else {
-                Toast.makeText(this, "Earlier arrivals not supported on this Android version", Toast.LENGTH_SHORT).show()
+        adapter = BusArrivalAdapter(
+            arrivals = emptyList(),
+            onLoadEarlierClick = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    loadEarlierArrivals()
+                } else {
+                    Toast.makeText(this, "Earlier arrivals not supported on this Android version", Toast.LENGTH_SHORT).show()
+                }
+            },
+            onDismissEarlierClick = {
+                dismissEarlierArrivals()
             }
-        }
+        )
         busArrivalRecyclerView.layoutManager = LinearLayoutManager(this)
         busArrivalRecyclerView.adapter = adapter
 
@@ -383,9 +393,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSwipeRefresh() {
-        swipeRefreshLayout.setOnRefreshListener {
-            refreshCurrentStopData()
-        }
+        swipeRefreshLayout.isEnabled = false // Disable swipe to refresh as requested
 
         swipeRefreshLayout.setColorSchemeResources(
             android.R.color.black,
@@ -634,6 +642,8 @@ class MainActivity : AppCompatActivity() {
             callback = { stopName, fetchedSignId->
                 runOnUiThread {
                     val finalSignId = signId ?: fetchedSignId
+                    
+                    isShowingEarlierArrivals = false // Reset state for new stop
 
                     recentStopsManager.addRecentStop(
                         stopId = stopId,
@@ -730,13 +740,6 @@ class MainActivity : AppCompatActivity() {
         }
         carouselContainer.layoutParams = params
 
-        // Lock manual dragging of the AppBar via touch on the header itself
-        val appBarParams = appBarLayout.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams
-        val behavior = appBarParams.behavior as? com.google.android.material.appbar.AppBarLayout.Behavior
-        behavior?.setDragCallback(object : com.google.android.material.appbar.AppBarLayout.Behavior.DragCallback() {
-            override fun canDrag(appBarLayout: com.google.android.material.appbar.AppBarLayout): Boolean = canScroll
-        })
-
         // Prevent the content below from triggering AppBar scroll
         swipeRefreshLayout.isNestedScrollingEnabled = canScroll
         busArrivalRecyclerView.isNestedScrollingEnabled = canScroll
@@ -767,7 +770,7 @@ class MainActivity : AppCompatActivity() {
                 val now = ZonedDateTime.now(ZoneId.of("Australia/Sydney"))
                 arrivals.forEach { arrival ->
                     try {
-                        val utcTime = try {
+                        val arrivalTime = try {
                             OffsetDateTime.parse(arrival.realTimeTime).toInstant()
                         } catch (_: Exception) {
                             if (arrival.realTimeTime.contains("Z")) {
@@ -776,27 +779,33 @@ class MainActivity : AppCompatActivity() {
                                 Instant.parse("${arrival.realTimeTime}Z")
                             }
                         }
-                        val sydneyTime = utcTime.atZone(ZoneId.of("Australia/Sydney"))
-                        // Subtract a small buffer (e.g. 1 min) if you want "Now" arrivals to stay active slightly longer
-                        arrival.isPast = sydneyTime.isBefore(now.minusSeconds(30))
-                    } catch (_: Exception) {
+                        val sydneyArrivalTime = arrivalTime.atZone(ZoneId.of("Australia/Sydney"))
+                        
+                        // Explicitly check if the arrival time is before current time
+                        arrival.isPast = sydneyArrivalTime.isBefore(now.minusSeconds(30))
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Error parsing time for greying out: ${arrival.realTimeTime}", e)
                     }
                 }
             }
 
             val distinctBusNumbers = arrivals.map { it.routeName }.distinct()
 
-            withContext(Dispatchers.Main) {
-                allArrivals = arrivals
-                adapter.updateArrivals(arrivals)
+                    withContext(Dispatchers.Main) {
+                        if (!isShowingEarlierArrivals) {
+                            originalArrivals = arrivals
+                        }
+                        allArrivals = arrivals
+                        availableBusNumbers = listOf("All") + distinctBusNumbers
+                        updateBusNumbers()
 
-                availableBusNumbers = listOf("All") + distinctBusNumbers
-                updateBusNumbers()
+                        // Force adapter update
+                        adapter.updateArrivals(allArrivals, isShowingEarlierArrivals)
 
-                eInkFadeIn(busArrivalRecyclerView)
-                eInkFadeOut(errorTextView)
-                eInkFadeOut(noDataTextView)
-            }
+                        eInkFadeIn(busArrivalRecyclerView)
+                        eInkFadeOut(errorTextView)
+                        eInkFadeOut(noDataTextView)
+                    }
         }
     }
 
@@ -804,8 +813,13 @@ class MainActivity : AppCompatActivity() {
     private fun loadEarlierArrivals() {
         val stopId = currentStopId ?: return
         
-        // Use the current earliest arrival as our reference point
+        // Always use the CURRENTLY VISIBLE list's earliest arrival as our reference point
         val firstArrival = allArrivals.minByOrNull { it.realTimeTime }
+        
+        // Debug Toast to see what we are using as a reference
+        val refDisplay = firstArrival?.getFormattedTime() ?: "Now"
+        // Toast.makeText(this, "Reference: $refDisplay", Toast.LENGTH_SHORT).show()
+
         val referenceTime = try {
             if (firstArrival != null) {
                 val utcTime = try {
@@ -851,6 +865,7 @@ class MainActivity : AppCompatActivity() {
                                 .distinctBy { it.realTimeTime + it.routeName + it.destination }
                                 .sortedBy { it.realTimeTime }
                             
+                            isShowingEarlierArrivals = true
                             showResults(combined)
                             Toast.makeText(this@MainActivity, "Loaded ${earlierArrivals.size} earlier arrivals", Toast.LENGTH_SHORT).show()
                         } else {
@@ -867,6 +882,13 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+    }
+
+    private fun dismissEarlierArrivals() {
+        isShowingEarlierArrivals = false
+        allArrivals = originalArrivals // Reset allArrivals to original so next loadEarlier search starts from "now"
+        showResults(originalArrivals)
+        Toast.makeText(this, "Dismissed earlier arrivals", Toast.LENGTH_SHORT).show()
     }
 
     private fun showError(message: String) {

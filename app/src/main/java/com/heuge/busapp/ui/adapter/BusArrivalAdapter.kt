@@ -13,13 +13,16 @@ import com.heuge.busapp.data.model.BusArrival
 
 class BusArrivalAdapter(
     private var arrivals: List<BusArrival>,
-    private val onLoadEarlierClick: () -> Unit
+    private val onLoadEarlierClick: () -> Unit,
+    private val onDismissEarlierClick: () -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
         private const val VIEW_TYPE_LOAD_EARLIER = 0
         private const val VIEW_TYPE_ARRIVAL = 1
     }
+
+    private var hasEarlierArrivals: Boolean = false
 
     class ArrivalViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val routeNumber: TextView = view.findViewById(R.id.routeNumber)
@@ -31,6 +34,8 @@ class BusArrivalAdapter(
 
     class LoadEarlierViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val loadEarlierButton: TextView = view.findViewById(R.id.loadEarlierButton)
+        val dismissEarlierButton: TextView = view.findViewById(R.id.dismissEarlierButton)
+        val separator: View = view.findViewById(R.id.earlierArrivalsSeparator)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -53,6 +58,16 @@ class BusArrivalAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is LoadEarlierViewHolder) {
             holder.loadEarlierButton.setOnClickListener { onLoadEarlierClick() }
+            holder.dismissEarlierButton.setOnClickListener { onDismissEarlierClick() }
+            
+            // Only show dismiss button if we actually have earlier arrivals
+            if (hasEarlierArrivals) {
+                holder.dismissEarlierButton.visibility = View.VISIBLE
+                holder.separator.visibility = View.VISIBLE
+            } else {
+                holder.dismissEarlierButton.visibility = View.GONE
+                holder.separator.visibility = View.GONE
+            }
         } else if (holder is ArrivalViewHolder) {
             val arrival = arrivals[position - 1]
 
@@ -99,44 +114,25 @@ class BusArrivalAdapter(
         return if (arrivals.isEmpty()) 0 else arrivals.size + 1
     }
 
-    fun updateArrivals(newArrivals: List<BusArrival>) {
+    fun updateArrivals(newArrivals: List<BusArrival>, hasEarlier: Boolean = false) {
         val wasEmpty = this.arrivals.isEmpty()
         val isNowEmpty = newArrivals.isEmpty()
 
+        this.hasEarlierArrivals = hasEarlier
+
         if (wasEmpty && !isNowEmpty) {
             this.arrivals = newArrivals
-            notifyItemRangeInserted(0, newArrivals.size + 1)
+            notifyDataSetChanged()
             return
         }
         if (!wasEmpty && isNowEmpty) {
-            val oldSize = this.arrivals.size
             this.arrivals = newArrivals
-            notifyItemRangeRemoved(0, oldSize + 1)
+            notifyDataSetChanged()
             return
         }
 
-        val diffCallback = BusArrivalDiffCallback(this.arrivals, newArrivals)
-        val diffResult = DiffUtil.calculateDiff(diffCallback)
-
         this.arrivals = newArrivals
-        // We use dispatchUpdatesTo(this) which handles the offsets automatically for the header
-        diffResult.dispatchUpdatesTo(object : androidx.recyclerview.widget.ListUpdateCallback {
-            override fun onInserted(position: Int, count: Int) {
-                notifyItemRangeInserted(position + 1, count)
-            }
-
-            override fun onRemoved(position: Int, count: Int) {
-                notifyItemRangeRemoved(position + 1, count)
-            }
-
-            override fun onMoved(fromPosition: Int, toPosition: Int) {
-                notifyItemMoved(fromPosition + 1, toPosition + 1)
-            }
-
-            override fun onChanged(position: Int, count: Int, payload: Any?) {
-                notifyItemRangeChanged(position + 1, count, payload)
-            }
-        })
+        notifyDataSetChanged()
     }
 
     private class BusArrivalDiffCallback(
